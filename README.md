@@ -25,16 +25,23 @@ bun run build
 ✅ **Tab System** - Open multiple tables, auto-focus existing tabs, close with X button
 ✅ **Keyboard Shortcuts** - Full keyboard navigation (Cmd/Ctrl+T, Cmd/Ctrl+W, Cmd/Ctrl+[1-9])
 ✅ **Empty Tabs** - Create blank tabs for custom queries or future features
-✅ **Theming** - shadcn-style CSS variables supporting light/dark themes
-✅ **Theme Toggle** - Switch themes with sun/moon icon in sidebar
+✅ **Settings Panel** - Dedicated settings tab accessible from sidebar
+✅ **Theming System** - 3 beautiful themes with light/dark mode variants
+  - Amethyst Haze (Purple-tinted elegance)
+  - Solar Dusk (Warm sunset tones)
+  - Nature (Fresh green palette)
+✅ **Light/Dark Mode** - Separate toggle for light and dark mode
+✅ **Theme Toggle** - Quick toggle between light/dark in sidebar
 ✅ **Responsive Layout** - Flexbox-based layout that adapts to window size
 ✅ **Dummy Data** - Sample table views for testing the UI
 
 ## Features
 
-- **Sidebar Navigation** - Browse available database tables
+- **Sidebar Navigation** - Browse available database tables and access settings
 - **Tab-Based Interface** - Open multiple tables simultaneously, similar to Zed editor
-- **Theme Support** - shadcn-style theming with CSS variables for easy theme switching
+- **Settings Panel** - Comprehensive settings with theme and mode selection
+- **Multiple Themes** - 3 carefully crafted themes from tweakcn, each with light and dark variants
+- **Theme System** - OKLCH color space with shadcn-style CSS variables
 - **Privacy First** - All data processing happens locally
 
 ## UI Components
@@ -55,18 +62,28 @@ bun run build
 - Create empty tabs with `Cmd/Ctrl + T` for custom queries
 - Switch between tabs using `Cmd/Ctrl + [1-9]`
 
+### Settings
+
+Access settings by clicking the Settings button at the bottom of the sidebar.
+
+**Available Settings:**
+- **Mode Selection** - Choose between Light and Dark mode
+- **Theme Selection** - Choose from 3 beautiful themes:
+  - **Amethyst Haze** - Purple-tinted elegance with soft gradients
+  - **Solar Dusk** - Warm sunset tones with orange accents
+  - **Nature** - Fresh green palette inspired by nature
+
+Each theme includes both light and dark variants that change based on your mode selection.
+
 ### Theming
 
-The app uses shadcn-style CSS variables for theming. Colors are defined in `src/index.css`:
+The app uses OKLCH color space with shadcn-style CSS variables. All themes are defined in `src/themes/`:
 
-- Light theme (default)
-- Dark theme (`.dark` class)
-
-To switch themes, add the `dark` class to the root element:
-
-```typescript
-document.documentElement.classList.add('dark');
-```
+- 3 pre-built themes with full light/dark variants
+- Separate mode (light/dark) and theme selection
+- Easy switching via Settings panel
+- Settings persist across sessions (localStorage)
+- Modern OKLCH colors for vivid, perceptually uniform palettes
 
 #### Theme Variables
 
@@ -102,6 +119,18 @@ bun run tauri dev
 - **`⌘/Ctrl + 1-9`** - Switch to tab by number
 
 The app automatically uses `⌘ (Command)` on macOS and `Ctrl` on Windows/Linux.
+
+## Themes
+
+The app includes 3 carefully selected themes from [tweakcn](https://tweakcn.com):
+
+| Theme | Description | Colors |
+|-------|-------------|--------|
+| Amethyst Haze | Purple-tinted elegance | Purple, Pink, Rose |
+| Solar Dusk | Warm sunset tones | Orange, Yellow, Gold |
+| Nature | Fresh green palette | Green, Forest, Sage |
+
+Each theme has both light and dark variants. Change theme and mode anytime via **Settings → Appearance**.
 
 ## Tech Stack
 

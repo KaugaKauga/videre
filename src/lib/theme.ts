@@ -1,36 +1,65 @@
 /**
- * Theme utilities for managing light/dark mode
+ * Theme utilities for managing themes and dark/light mode
  */
 
-export type Theme = "light" | "dark" | "system";
+export type ThemeName = "amethyst-haze" | "solar-dusk" | "nature";
+export type Mode = "light" | "dark";
 
 const THEME_STORAGE_KEY = "daedalus-theme";
+const MODE_STORAGE_KEY = "daedalus-mode";
 
 /**
  * Gets the current theme preference from localStorage
  */
-export function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system";
+export function getStoredTheme(): ThemeName {
+  if (typeof window === "undefined") return "amethyst-haze";
 
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
-  if (stored === "light" || stored === "dark" || stored === "system") {
+  if (
+    stored === "amethyst-haze" ||
+    stored === "solar-dusk" ||
+    stored === "nature"
+  ) {
     return stored;
   }
-  return "system";
+  return "amethyst-haze";
+}
+
+/**
+ * Gets the current mode preference from localStorage
+ */
+export function getStoredMode(): Mode {
+  if (typeof window === "undefined") return "light";
+
+  const stored = localStorage.getItem(MODE_STORAGE_KEY);
+  if (stored === "light" || stored === "dark") {
+    return stored;
+  }
+
+  // Check system preference as fallback
+  return getSystemMode();
 }
 
 /**
  * Saves theme preference to localStorage
  */
-export function setStoredTheme(theme: Theme): void {
+export function setStoredTheme(theme: ThemeName): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(THEME_STORAGE_KEY, theme);
 }
 
 /**
+ * Saves mode preference to localStorage
+ */
+export function setStoredMode(mode: Mode): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(MODE_STORAGE_KEY, mode);
+}
+
+/**
  * Gets the system's preferred color scheme
  */
-export function getSystemTheme(): "light" | "dark" {
+export function getSystemMode(): Mode {
   if (typeof window === "undefined") return "light";
 
   return window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -39,18 +68,25 @@ export function getSystemTheme(): "light" | "dark" {
 }
 
 /**
- * Applies the theme to the document
+ * Applies the theme and mode to the document
  */
-export function applyTheme(theme: Theme): void {
+export function applyTheme(theme: ThemeName, mode: Mode): void {
   if (typeof window === "undefined") return;
 
   const root = document.documentElement;
-  const effectiveTheme = theme === "system" ? getSystemTheme() : theme;
 
-  if (effectiveTheme === "dark") {
+  // Remove all theme classes
+  root.classList.remove("amethyst-haze", "solar-dusk", "nature");
+
+  // Remove dark mode class
+  root.classList.remove("dark");
+
+  // Apply the selected theme
+  root.classList.add(theme);
+
+  // Apply dark mode if selected
+  if (mode === "dark") {
     root.classList.add("dark");
-  } else {
-    root.classList.remove("dark");
   }
 }
 
@@ -59,42 +95,48 @@ export function applyTheme(theme: Theme): void {
  */
 export function initializeTheme(): void {
   const theme = getStoredTheme();
-  applyTheme(theme);
+  const mode = getStoredMode();
+  applyTheme(theme, mode);
 }
 
 /**
- * Sets and applies a new theme
+ * Sets and applies a new theme (keeps current mode)
  */
-export function setTheme(theme: Theme): void {
+export function setTheme(theme: ThemeName): void {
+  const currentMode = getStoredMode();
   setStoredTheme(theme);
-  applyTheme(theme);
+  applyTheme(theme, currentMode);
 }
 
 /**
- * Toggles between light and dark theme
+ * Sets and applies a new mode (keeps current theme)
  */
-export function toggleTheme(): void {
-  const current = getStoredTheme();
-  const effectiveTheme = current === "system" ? getSystemTheme() : current;
-  const newTheme: Theme = effectiveTheme === "dark" ? "light" : "dark";
-  setTheme(newTheme);
+export function setMode(mode: Mode): void {
+  const currentTheme = getStoredTheme();
+  setStoredMode(mode);
+  applyTheme(currentTheme, mode);
 }
 
 /**
- * Listens for system theme changes (when theme is set to "system")
+ * Toggles between light and dark mode
  */
-export function watchSystemTheme(callback: (theme: "light" | "dark") => void): () => void {
+export function toggleMode(): void {
+  const currentMode = getStoredMode();
+  const newMode: Mode = currentMode === "dark" ? "light" : "dark";
+  setMode(newMode);
+}
+
+/**
+ * Listens for system theme changes
+ */
+export function watchSystemMode(callback: (mode: Mode) => void): () => void {
   if (typeof window === "undefined") return () => {};
 
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   const handler = (e: MediaQueryListEvent) => {
-    const currentTheme = getStoredTheme();
-    if (currentTheme === "system") {
-      const theme = e.matches ? "dark" : "light";
-      applyTheme(theme);
-      callback(theme);
-    }
+    const mode = e.matches ? "dark" : "light";
+    callback(mode);
   };
 
   // Modern browsers

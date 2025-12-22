@@ -2,6 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import "./themes/amethyst-haze.css";
+import "./themes/solar-dusk.css";
+import "./themes/nature.css";
 import { initializeTheme } from "./lib/theme";
 
 // Initialize theme before rendering

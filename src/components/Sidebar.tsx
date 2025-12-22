@@ -1,8 +1,9 @@
-import { Database, Table } from "lucide-react";
+import { Database, Table, Settings } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
 interface SidebarProps {
   onTableClick: (tableName: string) => void;
+  onSettingsClick: () => void;
 }
 
 const tables = [
@@ -10,7 +11,7 @@ const tables = [
   { name: "organizations", icon: Table },
 ];
 
-export function Sidebar({ onTableClick }: SidebarProps) {
+export function Sidebar({ onTableClick, onSettingsClick }: SidebarProps) {
   return (
     <div className="w-64 h-full bg-card border-r border-border flex flex-col">
       {/* Header */}
@@ -45,6 +46,19 @@ export function Sidebar({ onTableClick }: SidebarProps) {
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="mt-auto border-t border-border">
+        <div className="p-2">
+          <button
+            onClick={onSettingsClick}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            <span>Settings</span>
+          </button>
         </div>
       </div>
     </div>

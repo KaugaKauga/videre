@@ -4,6 +4,7 @@ import { TabBar, Tab } from "./components/TabBar";
 import { TableView } from "./components/TableView";
 import { EmptyState } from "./components/EmptyState";
 import { EmptyTab } from "./components/EmptyTab";
+import { SettingsView } from "./components/SettingsView";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 
 function App() {
@@ -27,6 +28,25 @@ function App() {
         label: tableName,
         type: "table",
         tableName: tableName,
+      };
+      setTabs([...tabs, newTab]);
+      setActiveTabId(newTab.id);
+    }
+  };
+
+  const handleSettingsClick = () => {
+    // Check if settings tab already exists
+    const existingTab = tabs.find((tab) => tab.type === "settings");
+
+    if (existingTab) {
+      // If tab exists, just focus it
+      setActiveTabId(existingTab.id);
+    } else {
+      // Create new settings tab
+      const newTab: Tab = {
+        id: `settings-${Date.now()}`,
+        label: "Settings",
+        type: "settings" as any,
       };
       setTabs([...tabs, newTab]);
       setActiveTabId(newTab.id);
@@ -118,13 +138,20 @@ function App() {
       return <EmptyTab />;
     }
 
+    if (activeTab.type === "settings") {
+      return <SettingsView />;
+    }
+
     return <EmptyState />;
   };
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       {/* Sidebar */}
-      <Sidebar onTableClick={handleTableClick} />
+      <Sidebar
+        onTableClick={handleTableClick}
+        onSettingsClick={handleSettingsClick}
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">

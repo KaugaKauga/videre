@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 export interface Tab {
   id: string;
   label: string;
-  type: "table" | "empty";
+  type: "table" | "empty" | "settings";
   tableName?: string;
 }
 
