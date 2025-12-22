@@ -5,6 +5,7 @@ import { TableView } from "./components/TableView";
 import { EmptyState } from "./components/EmptyState";
 import { EmptyTab } from "./components/EmptyTab";
 import { SettingsView } from "./components/SettingsView";
+import { ConnectionPage } from "./components/ConnectionPage";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 
 function App() {
@@ -47,6 +48,25 @@ function App() {
         id: `settings-${Date.now()}`,
         label: "Settings",
         type: "settings" as any,
+      };
+      setTabs([...tabs, newTab]);
+      setActiveTabId(newTab.id);
+    }
+  };
+
+  const handleConnectionClick = () => {
+    // Check if connection tab already exists
+    const existingTab = tabs.find((tab) => tab.type === "connection");
+
+    if (existingTab) {
+      // If tab exists, just focus it
+      setActiveTabId(existingTab.id);
+    } else {
+      // Create new connection tab
+      const newTab: Tab = {
+        id: `connection-${Date.now()}`,
+        label: "Connection",
+        type: "connection" as any,
       };
       setTabs([...tabs, newTab]);
       setActiveTabId(newTab.id);
@@ -142,6 +162,10 @@ function App() {
       return <SettingsView />;
     }
 
+    if (activeTab.type === "connection") {
+      return <ConnectionPage />;
+    }
+
     return <EmptyState />;
   };
 
@@ -151,6 +175,7 @@ function App() {
       <Sidebar
         onTableClick={handleTableClick}
         onSettingsClick={handleSettingsClick}
+        onConnectionClick={handleConnectionClick}
       />
 
       {/* Main Content Area */}

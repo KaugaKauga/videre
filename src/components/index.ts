@@ -5,3 +5,4 @@ export { EmptyState } from "./EmptyState";
 export { EmptyTab } from "./EmptyTab";
 export { ThemeToggle } from "./ThemeToggle";
 export { SettingsView } from "./SettingsView";
+export { ConnectionPage } from "./ConnectionPage";

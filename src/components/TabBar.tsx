@@ -1,9 +1,11 @@
 import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface Tab {
   id: string;
   label: string;
-  type: "table" | "empty" | "settings";
+  type: "table" | "empty" | "settings" | "connection";
   tableName?: string;
 }
 
@@ -31,27 +33,31 @@ export function TabBar({
         return (
           <div
             key={tab.id}
-            className={`
-              group flex items-center gap-2 px-4 h-full border-r border-border cursor-pointer
-              ${isActive ? "bg-background" : "bg-card hover:bg-accent/50"}
-              transition-colors relative
-            `}
+            className={cn(
+              "group flex items-center gap-2 px-4 h-full border-r border-border cursor-pointer transition-colors relative",
+              isActive ? "bg-background" : "bg-card hover:bg-accent/50",
+            )}
             onClick={() => onTabClick(tab.id)}
           >
             <span
-              className={`text-sm ${isActive ? "text-foreground" : "text-muted-foreground"}`}
+              className={cn(
+                "text-sm",
+                isActive ? "text-foreground" : "text-muted-foreground",
+              )}
             >
               {tab.label}
             </span>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity p-0"
               onClick={(e) => {
                 e.stopPropagation();
                 onTabClose(tab.id);
               }}
-              className="opacity-0 group-hover:opacity-100 hover:bg-accent rounded p-0.5 transition-opacity"
             >
               <X className="w-3 h-3" />
-            </button>
+            </Button>
             {isActive && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
             )}
