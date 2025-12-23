@@ -51,7 +51,7 @@ export function SettingsView() {
   };
 
   return (
-    <div className="flex-1 p-6 overflow-auto">
+    <div className="flex-1 h-full p-6 overflow-auto min-h-0">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-2">

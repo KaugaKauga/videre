@@ -87,10 +87,11 @@ export function TableView({ tableName, schema = "public" }: TableViewProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="p-6 pb-4">
+    <div className="flex-1 h-full flex flex-col min-h-0">
+      {/* Header */}
+      <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold text-foreground capitalize">
               {tableName}
             </h2>
@@ -101,57 +102,57 @@ export function TableView({ tableName, schema = "public" }: TableViewProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-6">
+      {/* Scrollable Table */}
+      <div className="flex-1 overflow-auto min-h-0 px-6 py-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    {data.columns.map((column) => (
-                      <th
-                        key={column}
-                        className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+            <table className="w-full">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-border bg-muted/50">
+                  {data.columns.map((column) => (
+                    <th
+                      key={column}
+                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted/50"
+                    >
+                      {column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-card">
+                {data.rows.map((row, rowIndex) => (
+                  <tr
+                    key={rowIndex}
+                    className="hover:bg-accent/50 transition-colors"
+                  >
+                    {row.map((cell, cellIndex) => (
+                      <td
+                        key={cellIndex}
+                        className="px-4 py-3 text-sm text-foreground whitespace-nowrap"
                       >
-                        {column}
-                      </th>
+                        {cell === null ? (
+                          <span className="text-muted-foreground italic">
+                            NULL
+                          </span>
+                        ) : typeof cell === "object" ? (
+                          <span className="text-muted-foreground">
+                            {JSON.stringify(cell)}
+                          </span>
+                        ) : (
+                          String(cell)
+                        )}
+                      </td>
                     ))}
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {data.rows.map((row, rowIndex) => (
-                    <tr
-                      key={rowIndex}
-                      className="hover:bg-accent/50 transition-colors"
-                    >
-                      {row.map((cell, cellIndex) => (
-                        <td
-                          key={cellIndex}
-                          className="px-4 py-3 text-sm text-foreground whitespace-nowrap"
-                        >
-                          {cell === null ? (
-                            <span className="text-muted-foreground italic">
-                              NULL
-                            </span>
-                          ) : typeof cell === "object" ? (
-                            <span className="text-muted-foreground">
-                              {JSON.stringify(cell)}
-                            </span>
-                          ) : (
-                            String(cell)
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      <div className="p-6 pt-4">
+      {/* Footer - Sticky at bottom */}
+      <div className="flex-shrink-0 px-6 py-4 border-t border-border bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">

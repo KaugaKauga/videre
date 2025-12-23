@@ -242,13 +242,13 @@ function App() {
   };
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-full">
       <Sidebar
         onTableClick={handleTableClick}
         onSettingsClick={handleSettingsClick}
         onConnectionClick={handleConnectionClick}
       />
-      <SidebarInset>
+      <SidebarInset className="h-full overflow-hidden">
         <div className="flex flex-col h-full overflow-hidden">
           {/* Tab Bar */}
           <TabBar
@@ -259,7 +259,9 @@ function App() {
           />
 
           {/* Content Area */}
-          {renderContent()}
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {renderContent()}
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
