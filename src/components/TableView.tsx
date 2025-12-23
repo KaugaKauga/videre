@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { db, TableData } from "@/lib/tauri";
 
 interface TableViewProps {
@@ -106,29 +114,26 @@ export function TableView({ tableName, schema = "public" }: TableViewProps) {
       <div className="flex-1 overflow-auto min-h-0 px-6 py-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="sticky top-0 z-10">
-                <tr className="border-b border-border bg-muted/50">
+            <Table containerClassName="overflow-x-auto">
+              <TableHeader className="sticky top-0 z-10 bg-muted/50">
+                <TableRow className="hover:bg-transparent">
                   {data.columns.map((column) => (
-                    <th
+                    <TableHead
                       key={column}
-                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted/50"
+                      className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-muted/50"
                     >
                       {column}
-                    </th>
+                    </TableHead>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border bg-card">
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data.rows.map((row, rowIndex) => (
-                  <tr
-                    key={rowIndex}
-                    className="hover:bg-accent/50 transition-colors"
-                  >
+                  <TableRow key={rowIndex}>
                     {row.map((cell, cellIndex) => (
-                      <td
+                      <TableCell
                         key={cellIndex}
-                        className="px-4 py-3 text-sm text-foreground whitespace-nowrap"
+                        className="px-4 py-3 whitespace-nowrap"
                       >
                         {cell === null ? (
                           <span className="text-muted-foreground italic">
@@ -141,12 +146,12 @@ export function TableView({ tableName, schema = "public" }: TableViewProps) {
                         ) : (
                           String(cell)
                         )}
-                      </td>
+                      </TableCell>
                     ))}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
