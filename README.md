@@ -21,11 +21,15 @@ bun run build
 ## What's Been Built
 
 ✅ **Core UI Layout** - Complete sidebar and tab-based navigation system (like Zed editor)
-✅ **Sidebar Component** - Browse tables with icons (users, organizations as test tables)
+✅ **Sidebar Component** - Browse tables with icons using shadcn sidebar components
 ✅ **Tab System** - Open multiple tables, auto-focus existing tabs, close with X button
 ✅ **Keyboard Shortcuts** - Full keyboard navigation (Cmd/Ctrl+T, Cmd/Ctrl+W, Cmd/Ctrl+[1-9])
 ✅ **Empty Tabs** - Create blank tabs for custom queries or future features
 ✅ **Settings Panel** - Dedicated settings tab accessible from sidebar
+✅ **Connection Page** - Connect to PostgreSQL databases with test connection feature
+✅ **Database Integration** - Full Rust backend with PostgreSQL support
+✅ **Live Table Data** - Fetch and display real data from connected databases
+✅ **Pagination** - Navigate through large datasets with pagination controls
 ✅ **Theming System** - 3 beautiful themes with light/dark mode variants
   - Amethyst Haze (Purple-tinted elegance)
   - Solar Dusk (Warm sunset tones)
@@ -33,34 +37,52 @@ bun run build
 ✅ **Light/Dark Mode** - Separate toggle for light and dark mode
 ✅ **Theme Toggle** - Quick toggle between light/dark in sidebar
 ✅ **Responsive Layout** - Flexbox-based layout that adapts to window size
-✅ **Dummy Data** - Sample table views for testing the UI
+✅ **State Management** - Zustand store for database connection and table management
 
 ## Features
 
+- **PostgreSQL Integration** - Connect to local or remote PostgreSQL databases
+- **Live Data Viewing** - Fetch and display real table data with pagination
 - **Sidebar Navigation** - Browse available database tables and access settings
 - **Tab-Based Interface** - Open multiple tables simultaneously, similar to Zed editor
+- **Connection Management** - Test connections before connecting, manage credentials
 - **Settings Panel** - Comprehensive settings with theme and mode selection
 - **Multiple Themes** - 3 carefully crafted themes from tweakcn, each with light and dark variants
 - **Theme System** - OKLCH color space with shadcn-style CSS variables
-- **Privacy First** - All data processing happens locally
+- **Privacy First** - All data processing happens locally, credentials never leave your machine
 
 ## UI Components
 
 ### Layout Structure
 
-- **Sidebar**: Displays available tables with icons
+- **Sidebar**: Displays available database tables fetched from PostgreSQL
 - **TabBar**: Manages open tabs with close buttons
-- **TableView**: Displays table data in a formatted grid
+- **TableView**: Displays live table data in a formatted grid with pagination
+- **ConnectionPage**: Form to connect to PostgreSQL databases
 - **EmptyState**: Shown when no tabs are open
+
+### Database Connection
+
+1. Click **Connection** in the sidebar to open the connection form
+2. Enter your PostgreSQL credentials:
+   - Host (e.g., localhost)
+   - Port (default: 5432)
+   - Database name
+   - Username
+   - Password
+3. Click **Test Connection** to verify credentials (optional)
+4. Click **Connect** to establish the connection
+5. Once connected, tables will appear in the sidebar
 
 ### Tab Behavior
 
-- Clicking a table in the sidebar opens it in a new tab
+- Clicking a table in the sidebar opens it in a new tab with live data
 - If the table is already open, it focuses the existing tab
 - Tabs can be closed with the X button (appears on hover) or `Cmd/Ctrl + W`
 - Active tab is highlighted with a blue underline
 - Create empty tabs with `Cmd/Ctrl + T` for custom queries
 - Switch between tabs using `Cmd/Ctrl + [1-9]`
+- Navigate through large datasets using pagination controls (Previous/Next)
 
 ### Settings
 
@@ -134,12 +156,34 @@ Each theme has both light and dark variants. Change theme and mode anytime via *
 
 ## Tech Stack
 
+### Frontend
 - **Tauri** - Desktop app framework
 - **React 19** - UI framework
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Utility-first styling
+- **shadcn/ui** - UI component library
+- **Zustand** - State management
 - **Lucide React** - Icon library
 - **Vite** - Build tool
+
+### Backend (Rust)
+- **tokio** - Async runtime
+- **tokio-postgres** - PostgreSQL client
+- **serde** - Serialization/deserialization
+- **tauri** - Desktop app backend
+
+## Database Support
+
+Currently supports **PostgreSQL** databases with the following features:
+
+- Test connection before connecting
+- Fetch table list from `information_schema`
+- View table data with pagination (100 rows per page)
+- Support for multiple schemas
+- NULL value handling
+- Type-safe data serialization
+
+Future support planned for MySQL, SQLite, and other databases.
 
 ## Recommended IDE Setup
 

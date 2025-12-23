@@ -7,6 +7,7 @@ export interface Tab {
   label: string;
   type: "table" | "empty" | "settings" | "connection";
   tableName?: string;
+  schema?: string;
 }
 
 interface TabBarProps {

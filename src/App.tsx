@@ -7,13 +7,14 @@ import { EmptyTab } from "./components/EmptyTab";
 import { SettingsView } from "./components/SettingsView";
 import { ConnectionPage } from "./components/ConnectionPage";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { SidebarProvider, SidebarInset } from "./components/ui/sidebar";
 
 function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [tabCounter, setTabCounter] = useState(0);
 
-  const handleTableClick = (tableName: string) => {
+  const handleTableClick = (tableName: string, schema: string) => {
     // Check if tab already exists
     const existingTab = tabs.find(
       (tab) => tab.type === "table" && tab.tableName === tableName,
@@ -29,6 +30,7 @@ function App() {
         label: tableName,
         type: "table",
         tableName: tableName,
+        schema: schema,
       };
       setTabs([...tabs, newTab]);
       setActiveTabId(newTab.id);
@@ -151,7 +153,9 @@ function App() {
     }
 
     if (activeTab.type === "table" && activeTab.tableName) {
-      return <TableView tableName={activeTab.tableName} />;
+      return (
+        <TableView tableName={activeTab.tableName} schema={activeTab.schema} />
+      );
     }
 
     if (activeTab.type === "empty") {
@@ -170,28 +174,27 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
-      {/* Sidebar */}
+    <SidebarProvider>
       <Sidebar
         onTableClick={handleTableClick}
         onSettingsClick={handleSettingsClick}
         onConnectionClick={handleConnectionClick}
       />
+      <SidebarInset>
+        <div className="flex flex-col h-full overflow-hidden">
+          {/* Tab Bar */}
+          <TabBar
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onTabClick={handleTabClick}
+            onTabClose={handleTabClose}
+          />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Tab Bar */}
-        <TabBar
-          tabs={tabs}
-          activeTabId={activeTabId}
-          onTabClick={handleTabClick}
-          onTabClose={handleTabClose}
-        />
-
-        {/* Content Area */}
-        {renderContent()}
-      </div>
-    </div>
+          {/* Content Area */}
+          {renderContent()}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
