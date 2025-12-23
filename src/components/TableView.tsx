@@ -1,19 +1,52 @@
-import { useEffect, useState } from "react";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Loader2, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "./DataTable";
 import { db, TableData } from "@/lib/tauri";
 
 interface TableViewProps {
   tableName: string;
   schema?: string;
+}
+
+// Helper component to render the table content
+function DataTableContent({ data }: { data: TableData }) {
+  // Create columns dynamically from the data
+  const columns = useMemo<ColumnDef<any>[]>(() => {
+    return data.columns.map((columnName, index) => ({
+      accessorFn: (row: any[]) => row[index],
+      id: columnName,
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-auto px-2 py-1 hover:bg-transparent"
+          >
+            {columnName}
+            <ArrowUpDown className="ml-2 h-3 w-3" />
+          </Button>
+        );
+      },
+      cell: ({ getValue }) => {
+        const value = getValue();
+        if (value === null) {
+          return <span className="text-muted-foreground italic">NULL</span>;
+        }
+        if (typeof value === "object") {
+          return (
+            <span className="text-muted-foreground">
+              {JSON.stringify(value)}
+            </span>
+          );
+        }
+        return String(value);
+      },
+    }));
+  }, [data.columns]);
+
+  return <DataTable columns={columns} data={data.rows} />;
 }
 
 export function TableView({ tableName, schema = "public" }: TableViewProps) {
@@ -112,46 +145,9 @@ export function TableView({ tableName, schema = "public" }: TableViewProps) {
 
       {/* Scrollable Table */}
       <div className="flex-1 overflow-auto min-h-0 px-6 py-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <Table containerClassName="overflow-x-auto">
-              <TableHeader className="sticky top-0 z-10 bg-muted/50">
-                <TableRow className="hover:bg-transparent">
-                  {data.columns.map((column) => (
-                    <TableHead
-                      key={column}
-                      className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-muted/50"
-                    >
-                      {column}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.rows.map((row, rowIndex) => (
-                  <TableRow key={rowIndex}>
-                    {row.map((cell, cellIndex) => (
-                      <TableCell
-                        key={cellIndex}
-                        className="px-4 py-3 whitespace-nowrap"
-                      >
-                        {cell === null ? (
-                          <span className="text-muted-foreground italic">
-                            NULL
-                          </span>
-                        ) : typeof cell === "object" ? (
-                          <span className="text-muted-foreground">
-                            {JSON.stringify(cell)}
-                          </span>
-                        ) : (
-                          String(cell)
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <div className="max-w-7xl mx-auto h-full">
+          <div className="bg-card border border-border rounded-lg overflow-hidden h-full flex flex-col">
+            <DataTableContent data={data} />
           </div>
         </div>
       </div>
