@@ -38,6 +38,8 @@ bun run build
 ✅ **Theme Toggle** - Quick toggle between light/dark in sidebar
 ✅ **Responsive Layout** - Flexbox-based layout that adapts to window size
 ✅ **State Management** - Zustand store for database connection and table management
+✅ **Smart Tab Reuse** - Empty tabs are reused when clicking sidebar items
+✅ **Smart Numbering** - Untitled tabs numbered based on currently open tabs
 
 ## Features
 
@@ -76,8 +78,13 @@ bun run build
 
 ### Tab Behavior
 
-- Clicking a table in the sidebar opens it in a new tab with live data
-- If the table is already open, it focuses the existing tab
+- **Smart Tab Opening**: 
+  - If an empty tab is active, clicking a table/settings/connection will reuse that tab
+  - If the table is already open, it focuses the existing tab
+  - Otherwise, creates a new tab with live data
+- **Untitled Numbering**: Empty tabs are numbered based on currently open tabs
+  - Example: Open Untitled 1, 2, 3 → Close Untitled 2 → New tab becomes Untitled 2 (not 4)
+  - Always uses the lowest available number
 - Tabs can be closed with the X button (appears on hover) or `Cmd/Ctrl + W`
 - Active tab is highlighted with a blue underline
 - Create empty tabs with `Cmd/Ctrl + T` for custom queries

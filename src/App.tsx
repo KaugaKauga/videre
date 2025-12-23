@@ -12,7 +12,6 @@ import { SidebarProvider, SidebarInset } from "./components/ui/sidebar";
 function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-  const [tabCounter, setTabCounter] = useState(0);
 
   const handleTableClick = (tableName: string, schema: string) => {
     // Check if tab already exists
@@ -23,6 +22,26 @@ function App() {
     if (existingTab) {
       // If tab exists, just focus it
       setActiveTabId(existingTab.id);
+      return;
+    }
+
+    // Check if active tab is empty - if so, reuse it
+    const activeTab = tabs.find((tab) => tab.id === activeTabId);
+    if (activeTab && activeTab.type === "empty") {
+      // Reuse the active empty tab by updating it in place
+      const updatedTabs = tabs.map((tab) =>
+        tab.id === activeTabId
+          ? {
+              id: activeTabId, // Keep the same ID
+              label: tableName,
+              type: "table" as const,
+              tableName: tableName,
+              schema: schema,
+            }
+          : tab,
+      );
+      setTabs(updatedTabs);
+      // Active tab ID stays the same
     } else {
       // Create new tab
       const newTab: Tab = {
@@ -44,6 +63,24 @@ function App() {
     if (existingTab) {
       // If tab exists, just focus it
       setActiveTabId(existingTab.id);
+      return;
+    }
+
+    // Check if active tab is empty - if so, reuse it
+    const activeTab = tabs.find((tab) => tab.id === activeTabId);
+    if (activeTab && activeTab.type === "empty") {
+      // Reuse the active empty tab by updating it in place
+      const updatedTabs = tabs.map((tab) =>
+        tab.id === activeTabId
+          ? {
+              id: activeTabId, // Keep the same ID
+              label: "Settings",
+              type: "settings" as const,
+            }
+          : tab,
+      );
+      setTabs(updatedTabs);
+      // Active tab ID stays the same
     } else {
       // Create new settings tab
       const newTab: Tab = {
@@ -63,6 +100,24 @@ function App() {
     if (existingTab) {
       // If tab exists, just focus it
       setActiveTabId(existingTab.id);
+      return;
+    }
+
+    // Check if active tab is empty - if so, reuse it
+    const activeTab = tabs.find((tab) => tab.id === activeTabId);
+    if (activeTab && activeTab.type === "empty") {
+      // Reuse the active empty tab by updating it in place
+      const updatedTabs = tabs.map((tab) =>
+        tab.id === activeTabId
+          ? {
+              id: activeTabId, // Keep the same ID
+              label: "Connection",
+              type: "connection" as const,
+            }
+          : tab,
+      );
+      setTabs(updatedTabs);
+      // Active tab ID stays the same
     } else {
       // Create new connection tab
       const newTab: Tab = {
@@ -95,15 +150,28 @@ function App() {
   };
 
   const handleNewEmptyTab = () => {
-    const newCounter = tabCounter + 1;
+    // Find the lowest available number for Untitled tabs
+    const untitledNumbers = tabs
+      .filter((tab) => tab.type === "empty")
+      .map((tab) => {
+        const match = tab.label.match(/^Untitled (\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((num) => num > 0);
+
+    // Find the lowest available number
+    let newNumber = 1;
+    while (untitledNumbers.includes(newNumber)) {
+      newNumber++;
+    }
+
     const newTab: Tab = {
-      id: `empty-${newCounter}-${Date.now()}`,
-      label: `Untitled ${newCounter}`,
+      id: `empty-${newNumber}-${Date.now()}`,
+      label: `Untitled ${newNumber}`,
       type: "empty",
     };
     setTabs([...tabs, newTab]);
     setActiveTabId(newTab.id);
-    setTabCounter(newCounter);
   };
 
   const handleCloseActiveTab = () => {
@@ -140,7 +208,7 @@ function App() {
         handler: () => handleSwitchToTab(i),
       })),
     ],
-    [tabs, activeTabId, tabCounter],
+    [tabs, activeTabId],
   );
 
   useKeyboardShortcuts(shortcuts);
