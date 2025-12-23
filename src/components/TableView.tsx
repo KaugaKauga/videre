@@ -20,14 +20,21 @@ export function TableView({ tableName, schema = "public" }: TableViewProps) {
       setIsLoading(true);
       setError(null);
       try {
+        console.log(
+          `Fetching data for table: ${schema}.${tableName} (page ${page + 1}, limit ${limit})...`,
+        );
         const result = await db.getTableData(
           tableName,
           schema,
           limit,
           page * limit,
         );
+        console.log(
+          `Loaded ${result.rows.length} rows from ${schema}.${tableName} (${result.total_rows} total rows)`,
+        );
         setData(result);
       } catch (err) {
+        console.error(`Failed to fetch data for ${schema}.${tableName}:`, err);
         setError(`Failed to fetch data: ${err}`);
       } finally {
         setIsLoading(false);

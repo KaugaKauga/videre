@@ -2,6 +2,22 @@
 
 This document describes all available Tauri commands that can be invoked from the frontend.
 
+## Data Fetching Strategy
+
+**Lazy Loading Architecture:**
+
+1. **On Connection** → Only fetch table structure (names and schemas)
+   - Uses `get_tables` command
+   - Lightweight operation (only metadata from `information_schema`)
+   - Populates the sidebar with available tables
+
+2. **On Tab Open** → Fetch actual table data on demand
+   - Uses `get_table_data` command
+   - Only fetches when user opens a specific table
+   - Includes pagination (default 100 rows per page)
+
+This ensures the app remains performant even with databases containing hundreds of tables or millions of rows.
+
 ## Database Commands
 
 ### `test_connection`
@@ -91,7 +107,9 @@ if (result.success) {
 
 ### `get_tables`
 
-Fetches all tables from the connected database (excludes system schemas).
+Fetches table structure (names and schemas only) from the connected database.
+
+**Note:** This command does NOT fetch any row data - only table metadata from `information_schema.tables`.
 
 **Parameters:** None
 
@@ -123,7 +141,9 @@ console.log(tables);
 
 ### `get_table_data`
 
-Fetches paginated data from a specific table.
+Fetches paginated row data from a specific table. This is called only when a table is opened in a tab.
+
+**Note:** This is the command that actually fetches row data. It's only called when needed (lazy loading).
 
 **Parameters:**
 ```typescript

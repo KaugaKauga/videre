@@ -33,13 +33,21 @@ export const useDbStore = create<DbStore>((set) => ({
   fetchTables: async () => {
     set({ isLoading: true, error: null });
     try {
+      console.log(
+        "Fetching table structure (names and schemas only, no data)...",
+      );
       const tables = await db.getTables();
+      console.log(
+        `Found ${tables.length} tables:`,
+        tables.map((t) => `${t.schema}.${t.name}`),
+      );
       set({ tables, isConnected: true, isLoading: false });
     } catch (error) {
+      console.error("Failed to fetch table structure:", error);
       set({
         error: `Failed to fetch tables: ${error}`,
         isLoading: false,
-        isConnected: false
+        isConnected: false,
       });
     }
   },
@@ -50,7 +58,7 @@ export const useDbStore = create<DbStore>((set) => ({
       set({
         isConnected: false,
         tables: [],
-        error: null
+        error: null,
       });
     } catch (error) {
       set({ error: `Failed to disconnect: ${error}` });
