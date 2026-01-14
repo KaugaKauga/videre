@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tauri::State;
 use tokio::sync::Mutex;
 use tokio_postgres::{Client, NoTls};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionConfig {
@@ -195,18 +196,40 @@ pub async fn get_table_data(
                 let mut row_data = Vec::new();
                 for i in 0..columns.len() {
                     // Try to get value as various types and convert to JSON
-                    let value: serde_json::Value = if let Ok(v) = row.try_get::<_, String>(i) {
-                        serde_json::Value::String(v)
-                    } else if let Ok(v) = row.try_get::<_, i32>(i) {
-                        serde_json::Value::Number(v.into())
-                    } else if let Ok(v) = row.try_get::<_, i64>(i) {
-                        serde_json::Value::Number(v.into())
-                    } else if let Ok(v) = row.try_get::<_, f64>(i) {
-                        serde_json::json!(v)
-                    } else if let Ok(v) = row.try_get::<_, bool>(i) {
-                        serde_json::Value::Bool(v)
+                    let value: serde_json::Value = if let Ok(v) = row.try_get::<_, Option<Uuid>>(i)
+                    {
+                        // Handle UUID (including NULL)
+                        match v {
+                            Some(uuid) => serde_json::Value::String(uuid.to_string()),
+                            None => serde_json::Value::Null,
+                        }
+                    } else if let Ok(v) = row.try_get::<_, Option<String>>(i) {
+                        match v {
+                            Some(s) => serde_json::Value::String(s),
+                            None => serde_json::Value::Null,
+                        }
+                    } else if let Ok(v) = row.try_get::<_, Option<i32>>(i) {
+                        match v {
+                            Some(n) => serde_json::Value::Number(n.into()),
+                            None => serde_json::Value::Null,
+                        }
+                    } else if let Ok(v) = row.try_get::<_, Option<i64>>(i) {
+                        match v {
+                            Some(n) => serde_json::Value::Number(n.into()),
+                            None => serde_json::Value::Null,
+                        }
+                    } else if let Ok(v) = row.try_get::<_, Option<f64>>(i) {
+                        match v {
+                            Some(f) => serde_json::json!(f),
+                            None => serde_json::Value::Null,
+                        }
+                    } else if let Ok(v) = row.try_get::<_, Option<bool>>(i) {
+                        match v {
+                            Some(b) => serde_json::Value::Bool(b),
+                            None => serde_json::Value::Null,
+                        }
                     } else {
-                        // If we can't determine the type, try to get it as a string
+                        // If we can't determine the type, return NULL
                         serde_json::Value::Null
                     };
                     row_data.push(value);
