@@ -20,6 +20,7 @@ function DataTableContent({ data }: { data: TableData }) {
       header: ({ column }) => {
         return (
           <Button
+            variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="-ml-4 h-auto px-2 py-1 hover:bg-transparent"
           >
