@@ -20,7 +20,6 @@ function DataTableContent({ data }: { data: TableData }) {
       header: ({ column }) => {
         return (
           <Button
-            variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="-ml-4 h-auto px-2 py-1 hover:bg-transparent"
           >
@@ -163,7 +162,6 @@ export function TableView({ tableName, schema = "public" }: TableViewProps) {
             </div>
             <div className="flex items-center gap-2">
               <Button
-                variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => p - 1)}
                 disabled={!hasPrevPage}
@@ -175,7 +173,6 @@ export function TableView({ tableName, schema = "public" }: TableViewProps) {
                 Page {page + 1} of {totalPages}
               </div>
               <Button
-                variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={!hasNextPage}
