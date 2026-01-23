@@ -184,7 +184,6 @@ export function ConnectionPage() {
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant="outline"
                 className="flex-1"
                 onClick={handleTestConnection}
                 disabled={isTesting || isConnecting}
