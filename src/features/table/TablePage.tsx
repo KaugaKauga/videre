@@ -134,57 +134,53 @@ export function TablePage({ tableName, schema = "public" }: TableViewProps) {
     <div className="flex-1 h-full flex flex-col min-h-0">
       {/* Header */}
       <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-foreground capitalize">
-              {tableName}
-            </h2>
-            <div className="text-sm text-muted-foreground">
-              {data.total_rows.toLocaleString()} total rows
-            </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold text-foreground capitalize">
+            {tableName}
+          </h2>
+          <div className="text-sm text-muted-foreground">
+            {data.total_rows.toLocaleString()} total rows
           </div>
         </div>
       </div>
 
       {/* Scrollable Table */}
       <div className="flex-1 overflow-auto min-h-0 px-6 py-6">
-        <div className="max-w-7xl mx-auto h-full">
-          <div className="bg-card border border-border rounded-lg overflow-hidden h-full flex flex-col">
-            <DataTableContent data={data} />
-          </div>
+        <div className="h-full flex flex-col">
+          <DataTableContent data={data} />
         </div>
       </div>
 
       {/* Footer - Sticky at bottom */}
       <div className="flex-shrink-0 px-6 py-4 border-t border-border bg-background">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Showing {page * limit + 1} to{" "}
+            {Math.min((page + 1) * limit, data.total_rows)} of{" "}
+            {data.total_rows.toLocaleString()} rows
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrevPage}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Previous
+            </Button>
             <div className="text-sm text-muted-foreground">
-              Showing {page * limit + 1} to{" "}
-              {Math.min((page + 1) * limit, data.total_rows)} of{" "}
-              {data.total_rows.toLocaleString()} rows
+              Page {page + 1} of {totalPages}
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={() => setPage((p) => p - 1)}
-                disabled={!hasPrevPage}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
-              </Button>
-              <div className="text-sm text-muted-foreground">
-                Page {page + 1} of {totalPages}
-              </div>
-              <Button
-                size="sm"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={!hasNextPage}
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNextPage}
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
           </div>
         </div>
       </div>
