@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Loader2, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "./DataTable";
+import { DataTable } from "../../components/DataTable";
 import { db, TableData } from "@/lib/tauri";
 
 interface TableViewProps {
@@ -49,7 +49,7 @@ function DataTableContent({ data }: { data: TableData }) {
   return <DataTable columns={columns} data={data.rows} />;
 }
 
-export function TableView({ tableName, schema = "public" }: TableViewProps) {
+export function TablePage({ tableName, schema = "public" }: TableViewProps) {
   const [data, setData] = useState<TableData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { TabBar, Tab } from "./components/TabBar";
-import { TableView } from "./components/TableView";
+import { TablePage } from "./features/table/TablePage";
 import { EmptyState } from "./components/EmptyState";
 import { EmptyTab } from "./components/EmptyTab";
 import { SettingsPage } from "./features/settings/SettingsPage";
@@ -222,7 +222,7 @@ function App() {
 
     if (activeTab.type === "table" && activeTab.tableName) {
       return (
-        <TableView tableName={activeTab.tableName} schema={activeTab.schema} />
+        <TablePage tableName={activeTab.tableName} schema={activeTab.schema} />
       );
     }
 
