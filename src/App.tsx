@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
-import { Sidebar } from "./components/Sidebar";
-import { TabBar, Tab } from "./components/TabBar";
+import { Sidebar } from "./features/shell/Sidebar";
+import { TabBar, Tab } from "./features/shell/TabBar";
 import { TablePage } from "./features/table/TablePage";
-import { EmptyState } from "./components/EmptyState";
-import { EmptyTab } from "./components/EmptyTab";
+import { EmptyState } from "./features/empty/EmptyState";
+import { EmptyTab } from "./features/empty/EmptyTab";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { ConnectionPage } from "./features/connection/ConnectionPage";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";

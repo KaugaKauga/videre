@@ -11,7 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "./ui/sidebar";
+} from "../../components/ui/sidebar";
 import { useDbStore } from "@/store/dbStore";
 
 interface SidebarProps {
