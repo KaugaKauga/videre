@@ -1,14 +1,3 @@
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-  VisibilityState,
-  ColumnFiltersState,
-  getFilteredRowModel,
-} from "@tanstack/react-table";
 import { useState } from "react";
 import {
   Table,
@@ -19,64 +8,98 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
+interface Column {
+  id: string;
+  header: (props: {
+    toggleSort: () => void;
+    sortDirection: "asc" | "desc" | null;
+  }) => React.ReactNode;
+  cell: (props: { value: any }) => React.ReactNode;
+  accessorFn: (row: any) => any;
 }
 
-export function DataTable<TData, TValue>({
-  columns,
-  data,
-}: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+interface DataTableProps {
+  columns: Column[];
+  data: any[];
+}
 
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-    },
-  });
+export function DataTable({ columns, data }: DataTableProps) {
+  const [sorting, setSorting] = useState<{
+    columnId: string;
+    direction: "asc" | "desc";
+  } | null>(null);
+
+  const toggleSort = (columnId: string) => {
+    setSorting((prev) => {
+      if (prev?.columnId === columnId) {
+        // Same column: toggle direction or reset
+        if (prev.direction === "asc") {
+          return { columnId, direction: "desc" };
+        }
+        return null; // Reset sorting
+      }
+      // New column: start with ascending
+      return { columnId, direction: "asc" };
+    });
+  };
+
+  const sortedData = [...data];
+  if (sorting) {
+    const column = columns.find((col) => col.id === sorting.columnId);
+    if (column) {
+      sortedData.sort((a, b) => {
+        const aVal = column.accessorFn(a);
+        const bVal = column.accessorFn(b);
+
+        // Handle null values
+        if (aVal === null && bVal === null) return 0;
+        if (aVal === null) return 1;
+        if (bVal === null) return -1;
+
+        // Compare values
+        let comparison = 0;
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          comparison = aVal.localeCompare(bVal);
+        } else if (typeof aVal === "number" && typeof bVal === "number") {
+          comparison = aVal - bVal;
+        } else {
+          comparison = String(aVal).localeCompare(String(bVal));
+        }
+
+        return sorting.direction === "asc" ? comparison : -comparison;
+      });
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
       <Table containerClassName="overflow-x-auto">
         <TableHeader className="sticky top-0 z-10 bg-muted/50">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-muted/50"
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
+          <TableRow className="hover:bg-transparent">
+            {columns.map((column) => (
+              <TableHead
+                key={column.id}
+                className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-muted/50"
+              >
+                {column.header({
+                  toggleSort: () => toggleSort(column.id),
+                  sortDirection:
+                    sorting?.columnId === column.id ? sorting.direction : null,
+                })}
+              </TableHead>
+            ))}
+          </TableRow>
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="px-4 py-3 whitespace-nowrap">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          {sortedData.length > 0 ? (
+            sortedData.map((row, rowIndex) => (
+              <TableRow key={rowIndex}>
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    className="px-4 py-3 whitespace-nowrap"
+                  >
+                    {column.cell({ value: column.accessorFn(row) })}
                   </TableCell>
                 ))}
               </TableRow>

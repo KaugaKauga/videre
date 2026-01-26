@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Loader2, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "../../components/DataTable";
 import { db, TableData } from "@/lib/tauri";
 
@@ -13,24 +12,28 @@ interface TableViewProps {
 // Helper component to render the table content
 function DataTableContent({ data }: { data: TableData }) {
   // Create columns dynamically from the data
-  const columns = useMemo<ColumnDef<any>[]>(() => {
+  const columns = useMemo(() => {
     return data.columns.map((columnName, index) => ({
       accessorFn: (row: any[]) => row[index],
       id: columnName,
-      header: ({ column }) => {
+      header: ({
+        toggleSort,
+      }: {
+        toggleSort: () => void;
+        sortDirection: "asc" | "desc" | null;
+      }) => {
         return (
           <Button
             variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="-ml-4 h-auto px-2 py-1 hover:bg-transparent"
+            onClick={toggleSort}
+            className="h-auto p-0 hover:bg-transparent"
           >
             {columnName}
             <ArrowUpDown className="ml-2 h-3 w-3" />
           </Button>
         );
       },
-      cell: ({ getValue }) => {
-        const value = getValue();
+      cell: ({ value }: { value: any }) => {
         if (value === null) {
           return <span className="text-muted-foreground italic">NULL</span>;
         }
