@@ -4,8 +4,8 @@ import { TabBar, Tab } from "./components/TabBar";
 import { TableView } from "./components/TableView";
 import { EmptyState } from "./components/EmptyState";
 import { EmptyTab } from "./components/EmptyTab";
-import { SettingsView } from "./components/SettingsView";
-import { ConnectionPage } from "./components/ConnectionPage";
+import { SettingsPage } from "./features/settings/SettingsPage";
+import { ConnectionPage } from "./features/connection/ConnectionPage";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { SidebarProvider, SidebarInset } from "./components/ui/sidebar";
 
@@ -231,7 +231,7 @@ function App() {
     }
 
     if (activeTab.type === "settings") {
-      return <SettingsView />;
+      return <SettingsPage />;
     }
 
     if (activeTab.type === "connection") {

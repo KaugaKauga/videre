@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Database, Table, Settings, Plug, Loader2 } from "lucide-react";
-import { ThemeToggle } from "./ThemeToggle";
 import {
   Sidebar as SidebarRoot,
   SidebarContent,
@@ -42,7 +41,6 @@ export function Sidebar({
             <Database className="w-5 h-5" />
             <h1 className="font-semibold text-lg">Daedalus</h1>
           </div>
-          <ThemeToggle />
         </div>
       </SidebarHeader>
 

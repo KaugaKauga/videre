@@ -6,7 +6,7 @@ import {
   setMode,
   type ThemeName,
   type Mode,
-} from "../lib/theme";
+} from "../../lib/theme";
 import { useState, useEffect } from "react";
 
 const themes: { id: ThemeName; name: string; description: string }[] = [
@@ -29,7 +29,7 @@ const modes: {
   { id: "dark", name: "Dark", description: "Easy on the eyes", icon: Moon },
 ];
 
-export function SettingsView() {
+export function SettingsPage() {
   const [currentTheme, setCurrentTheme] = useState<ThemeName>("amethyst-haze");
   const [currentMode, setCurrentMode] = useState<Mode>("light");
 
