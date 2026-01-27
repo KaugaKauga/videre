@@ -1,4 +1,4 @@
-import { Database } from "lucide-react";
+import { Database } from "@/components/icons";
 
 export function EmptyState() {
   return (

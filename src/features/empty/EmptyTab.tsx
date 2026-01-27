@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/icons";
 
 export function EmptyTab() {
   return (
@@ -9,8 +9,8 @@ export function EmptyTab() {
           Empty Tab
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          This is an empty tab. Select a table from the sidebar to view its contents,
-          or use this space for custom queries.
+          This is an empty tab. Select a table from the sidebar to view its
+          contents, or use this space for custom queries.
         </p>
         <div className="text-xs text-muted-foreground bg-muted/50 rounded-md p-3 border border-border">
           <p className="font-medium mb-1">Keyboard Shortcuts:</p>

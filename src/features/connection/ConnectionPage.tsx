@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Database, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Database, Loader, CheckCircle, XCircle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -188,7 +188,7 @@ export function ConnectionPage() {
                 onClick={handleTestConnection}
                 disabled={isTesting || isConnecting}
               >
-                {isTesting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {isTesting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 Test Connection
               </Button>
               <Button
@@ -197,7 +197,7 @@ export function ConnectionPage() {
                 disabled={isConnecting || isTesting}
               >
                 {isConnecting && (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 Connect
               </Button>

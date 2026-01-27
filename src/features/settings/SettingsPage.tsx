@@ -1,4 +1,4 @@
-import { Palette, Moon, Sun } from "lucide-react";
+import { Palette, Moon, Sun } from "@/components/icons";
 import {
   getStoredTheme,
   getStoredMode,

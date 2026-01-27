@@ -1,5 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import {
+  Loader,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+} from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "../../components/DataTable";
 import { db, TableData } from "@/lib/tauri";
@@ -96,7 +101,7 @@ export function TablePage({ tableName, schema = "public" }: TableViewProps) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader className="w-5 h-5 animate-spin" />
           <span>Loading data...</span>
         </div>
       </div>

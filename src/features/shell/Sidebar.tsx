@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Database, Table, Settings, Plug, Loader2 } from "lucide-react";
+import { Database, Table, Settings, Plug, Loader } from "@/components/icons";
 import {
   Sidebar as SidebarRoot,
   SidebarContent,
@@ -50,7 +50,7 @@ export function Sidebar({
           <SidebarGroupContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                <Loader className="w-4 h-4 animate-spin text-muted-foreground" />
               </div>
             ) : tables.length === 0 ? (
               <div className="px-3 py-2 text-xs text-muted-foreground">
