@@ -5,8 +5,8 @@
 export type ThemeName = "amethyst-haze" | "solar-dusk" | "nature";
 export type Mode = "light" | "dark";
 
-const THEME_STORAGE_KEY = "daedalus-theme";
-const MODE_STORAGE_KEY = "daedalus-mode";
+const THEME_STORAGE_KEY = "videre-theme";
+const MODE_STORAGE_KEY = "videre-mode";
 
 /**
  * Gets the current theme preference from localStorage

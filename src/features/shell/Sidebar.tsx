@@ -39,7 +39,7 @@ export function Sidebar({
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5" />
-            <h1 className="font-semibold text-lg">Daedalus</h1>
+            <h1 className="font-semibold text-lg">Videre</h1>
           </div>
         </div>
       </SidebarHeader>

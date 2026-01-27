@@ -1,4 +1,4 @@
-# Daedalus
+# Videre
 
 A local privacy-focused database inspector built with Tauri, React, and TypeScript.
 

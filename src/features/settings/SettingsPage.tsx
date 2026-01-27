@@ -58,7 +58,7 @@ export function SettingsPage() {
             Settings
           </h2>
           <p className="text-sm text-muted-foreground">
-            Customize your Daedalus experience
+            Customize your Videre experience
           </p>
         </div>
 
@@ -182,7 +182,7 @@ export function SettingsPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Database Inspector</span>
-              <span className="text-foreground font-medium">Daedalus</span>
+              <span className="text-foreground font-medium">Videre</span>
             </div>
           </div>
         </div>

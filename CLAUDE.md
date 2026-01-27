@@ -1,4 +1,4 @@
-##Daedalus
+##Videre
 
 A performant local pg inspector.
 
