@@ -74,12 +74,12 @@ export function DataTable({ columns, data }: DataTableProps) {
   return (
     <div className="flex flex-col h-full">
       <Table containerClassName="overflow-x-auto">
-        <TableHeader className="sticky top-0 z-10 bg-muted/50">
+        <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow className="hover:bg-transparent">
             {columns.map((column) => (
               <TableHead
                 key={column.id}
-                className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-muted/50"
+                className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-background"
               >
                 {column.header({
                   toggleSort: () => toggleSort(column.id),
