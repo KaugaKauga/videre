@@ -8,6 +8,9 @@ A local privacy-focused database inspector built with Tauri, React, and TypeScri
 # Install dependencies
 bun install
 
+# Start the test PostgreSQL database (Docker required)
+docker-compose up -d
+
 # Run in development mode
 bun run dev
 
@@ -16,7 +19,94 @@ bun run tauri dev
 
 # Build for production
 bun run build
+
+# Stop the test database
+docker-compose down
 ```
+
+## Test Database Setup
+
+The project includes a Docker Compose configuration for a test PostgreSQL database with sample data.
+
+### Prerequisites
+- Docker and Docker Compose installed
+
+### Starting the Database
+
+```bash
+# Start the database in detached mode
+docker-compose up -d
+
+# Check if it's running
+docker ps
+```
+
+### Connection Details
+
+Once the database is running, connect using these credentials:
+
+- **Host:** `localhost`
+- **Port:** `5432`
+- **Database:** `videre_test`
+- **Username:** `videre`
+- **Password:** `videre`
+
+### Sample Data - Greek Mythology Theme
+
+The test database includes a complete Greek mythology dataset across **7 tables**:
+
+- **Primordials table** (7) - The first beings: Chaos, Gaia, Uranus, Nyx, Erebus, Tartarus, Eros (Primordial)
+- **Titans table** (12) - Second generation: Cronus, Rhea, Oceanus, Hyperion, Themis, Mnemosyne, and more
+- **Gods table** (36) - Olympians and their descendants:
+  - **Olympians** (14) - Zeus, Hera, Poseidon, Athena, Apollo, Artemis, Ares, Aphrodite, etc.
+  - **Minor Gods** (22) - Hecate, Nike, Helios, Pan, Morpheus, The Fates, The Muses, Hypnos, etc.
+- **Heroes table** (10) - Legendary heroes: Heracles, Perseus, Achilles, Odysseus, Theseus, Jason, etc.
+- **Creatures table** (13) - Monsters and beasts: Medusa, Minotaur, Hydra, Chimera, Cerberus, Sphinx, etc.
+- **Quests table** (12) - Epic adventures: 12 Labors of Heracles, Quest for Golden Fleece, Journey to Underworld, etc.
+- **Artifacts table** (17) - Legendary items: Zeus' Lightning Bolt, Scythe of Cronus, Prometheus' Torch, etc.
+
+**Plus 4 powerful views:**
+- `mythology_summary` - Count of all entities by category
+- `hero_achievements` - Hero stats with quests completed and monsters slain
+- `divine_lineage` - Complete family tree from Primordials → Titans → Gods
+- `artifact_registry` - Artifact ownership and forging details
+
+Features include:
+- **Separate tables** for Primordials, Titans, and Gods for better organization
+- Complete divine family tree spanning 4 generations (Chaos → Gaia → Titans → Olympians)
+- Cross-table relationships between primordials, titans, and gods
+- Power levels (1-10) for all divine beings, fame ratings for heroes, threat levels for creatures
+- **Timestamps with timezone** (`TIMESTAMP WITH TIME ZONE`) for all records
+- Quest completion tracking and monster slaying records
+- Artifact ownership supporting gods, titans, heroes, and creatures
+- Patron god relationships linking gods to their mortal champions
+
+### Managing the Database
+
+```bash
+# Stop the database (keeps data)
+docker-compose stop
+
+# Start it again
+docker-compose start
+
+# Stop and remove containers (keeps data in volume)
+docker-compose down
+
+# Stop and remove everything including data
+docker-compose down -v
+
+# View logs
+docker-compose logs -f postgres
+```
+
+### Connecting in the App
+
+1. Start the test database: `docker-compose up -d`
+2. Open the app and click **Connection** in the sidebar
+3. Enter the connection details above
+4. Click **Test Connection** to verify
+5. Click **Connect** to start browsing the sample data
 
 ## What's Been Built
 
