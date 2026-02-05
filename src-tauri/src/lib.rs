@@ -14,6 +14,7 @@ pub fn run() {
             db::get_tables,
             db::get_table_data,
             db::get_foreign_keys,
+            db::get_row_by_pk,
             db::disconnect_db,
         ])
         .run(tauri::generate_context!())

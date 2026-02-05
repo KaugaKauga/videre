@@ -310,6 +310,116 @@ pub async fn get_foreign_keys(
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct RowData {
+    pub columns: Vec<String>,
+    pub values: Vec<serde_json::Value>,
+}
+
+#[tauri::command]
+pub async fn get_row_by_pk(
+    table_name: String,
+    schema: String,
+    pk_column: String,
+    pk_value: serde_json::Value,
+    state: State<'_, DbState>,
+) -> Result<RowData, String> {
+    let client_lock = state.client.lock().await;
+
+    match client_lock.as_ref() {
+        Some(client) => {
+            // Get column information
+            let column_query = format!(
+                "SELECT column_name FROM information_schema.columns
+                 WHERE table_schema = $1 AND table_name = $2
+                 ORDER BY ordinal_position"
+            );
+
+            let columns: Vec<String> =
+                match client.query(&column_query, &[&schema, &table_name]).await {
+                    Ok(rows) => rows.iter().map(|row| row.get(0)).collect(),
+                    Err(e) => return Err(format!("Failed to fetch columns: {}", e)),
+                };
+
+            // Build query based on pk_value type
+            let data_query = format!(
+                "SELECT * FROM \"{}\".\"{}\" WHERE \"{}\" = $1 LIMIT 1",
+                schema, table_name, pk_column
+            );
+
+            // Execute query with appropriate type
+            let row_result = match &pk_value {
+                serde_json::Value::Number(n) => {
+                    if let Some(i) = n.as_i64() {
+                        client.query_opt(&data_query, &[&(i as i32)]).await
+                    } else if let Some(f) = n.as_f64() {
+                        client.query_opt(&data_query, &[&f]).await
+                    } else {
+                        return Err("Invalid number type".to_string());
+                    }
+                }
+                serde_json::Value::String(s) => {
+                    // Try parsing as UUID first
+                    if let Ok(uuid) = s.parse::<Uuid>() {
+                        client.query_opt(&data_query, &[&uuid]).await
+                    } else {
+                        client.query_opt(&data_query, &[&s]).await
+                    }
+                }
+                _ => return Err("Unsupported primary key type".to_string()),
+            };
+
+            let row = match row_result {
+                Ok(Some(row)) => row,
+                Ok(None) => return Err("Row not found".to_string()),
+                Err(e) => return Err(format!("Failed to fetch row: {}", e)),
+            };
+
+            // Convert row to JSON values
+            let mut values = Vec::new();
+            for i in 0..columns.len() {
+                let value: serde_json::Value = if let Ok(v) = row.try_get::<_, Option<Uuid>>(i) {
+                    match v {
+                        Some(uuid) => serde_json::Value::String(uuid.to_string()),
+                        None => serde_json::Value::Null,
+                    }
+                } else if let Ok(v) = row.try_get::<_, Option<String>>(i) {
+                    match v {
+                        Some(s) => serde_json::Value::String(s),
+                        None => serde_json::Value::Null,
+                    }
+                } else if let Ok(v) = row.try_get::<_, Option<i32>>(i) {
+                    match v {
+                        Some(n) => serde_json::Value::Number(n.into()),
+                        None => serde_json::Value::Null,
+                    }
+                } else if let Ok(v) = row.try_get::<_, Option<i64>>(i) {
+                    match v {
+                        Some(n) => serde_json::Value::Number(n.into()),
+                        None => serde_json::Value::Null,
+                    }
+                } else if let Ok(v) = row.try_get::<_, Option<f64>>(i) {
+                    match v {
+                        Some(f) => serde_json::json!(f),
+                        None => serde_json::Value::Null,
+                    }
+                } else if let Ok(v) = row.try_get::<_, Option<bool>>(i) {
+                    match v {
+                        Some(b) => serde_json::Value::Bool(b),
+                        None => serde_json::Value::Null,
+                    }
+                } else {
+                    serde_json::Value::Null
+                };
+                values.push(value);
+            }
+
+            Ok(RowData { columns, values })
+        }
+        None => Err("Not connected to database".to_string()),
+    }
+}
+
 #[tauri::command]
 pub async fn disconnect_db(state: State<'_, DbState>) -> Result<(), String> {
     let mut client_lock = state.client.lock().await;

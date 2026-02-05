@@ -31,6 +31,11 @@ export interface ForeignKeyInfo {
   foreign_column_name: string;
 }
 
+export interface RowData {
+  columns: string[];
+  values: any[];
+}
+
 export const db = {
   testConnection: async (
     config: ConnectionConfig,
@@ -67,6 +72,20 @@ export const db = {
     return await invoke<ForeignKeyInfo[]>("get_foreign_keys", {
       tableName,
       schema,
+    });
+  },
+
+  getRowByPk: async (
+    tableName: string,
+    schema: string,
+    pkColumn: string,
+    pkValue: any,
+  ): Promise<RowData> => {
+    return await invoke<RowData>("get_row_by_pk", {
+      tableName,
+      schema,
+      pkColumn,
+      pkValue,
     });
   },
 
