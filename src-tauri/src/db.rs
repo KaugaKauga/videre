@@ -113,6 +113,14 @@ pub struct TableInfo {
     pub schema: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ForeignKeyInfo {
+    pub column_name: String,
+    pub foreign_table_schema: String,
+    pub foreign_table_name: String,
+    pub foreign_column_name: String,
+}
+
 #[tauri::command]
 pub async fn get_tables(state: State<'_, DbState>) -> Result<Vec<TableInfo>, String> {
     let client_lock = state.client.lock().await;
@@ -249,6 +257,54 @@ pub async fn get_table_data(
                 rows: data_rows,
                 total_rows: total_rows as usize,
             })
+        }
+        None => Err("Not connected to database".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_foreign_keys(
+    table_name: String,
+    schema: String,
+    state: State<'_, DbState>,
+) -> Result<Vec<ForeignKeyInfo>, String> {
+    let client_lock = state.client.lock().await;
+
+    match client_lock.as_ref() {
+        Some(client) => {
+            let query = "
+                SELECT
+                    kcu.column_name,
+                    ccu.table_schema AS foreign_table_schema,
+                    ccu.table_name AS foreign_table_name,
+                    ccu.column_name AS foreign_column_name
+                FROM information_schema.table_constraints AS tc
+                JOIN information_schema.key_column_usage AS kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                    AND tc.table_schema = kcu.table_schema
+                JOIN information_schema.constraint_column_usage AS ccu
+                    ON ccu.constraint_name = tc.constraint_name
+                    AND ccu.table_schema = tc.table_schema
+                WHERE tc.constraint_type = 'FOREIGN KEY'
+                    AND tc.table_schema = $1
+                    AND tc.table_name = $2
+            ";
+
+            match client.query(query, &[&schema, &table_name]).await {
+                Ok(rows) => {
+                    let fks = rows
+                        .iter()
+                        .map(|row| ForeignKeyInfo {
+                            column_name: row.get(0),
+                            foreign_table_schema: row.get(1),
+                            foreign_table_name: row.get(2),
+                            foreign_column_name: row.get(3),
+                        })
+                        .collect();
+                    Ok(fks)
+                }
+                Err(e) => Err(format!("Failed to fetch foreign keys: {}", e)),
+            }
         }
         None => Err("Not connected to database".to_string()),
     }

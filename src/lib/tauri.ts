@@ -24,9 +24,16 @@ export interface TableData {
   total_rows: number;
 }
 
+export interface ForeignKeyInfo {
+  column_name: string;
+  foreign_table_schema: string;
+  foreign_table_name: string;
+  foreign_column_name: string;
+}
+
 export const db = {
   testConnection: async (
-    config: ConnectionConfig
+    config: ConnectionConfig,
   ): Promise<ConnectionResult> => {
     return await invoke<ConnectionResult>("test_connection", { config });
   },
@@ -43,13 +50,23 @@ export const db = {
     tableName: string,
     schema: string,
     limit?: number,
-    offset?: number
+    offset?: number,
   ): Promise<TableData> => {
     return await invoke<TableData>("get_table_data", {
       tableName,
       schema,
       limit,
       offset,
+    });
+  },
+
+  getForeignKeys: async (
+    tableName: string,
+    schema: string,
+  ): Promise<ForeignKeyInfo[]> => {
+    return await invoke<ForeignKeyInfo[]>("get_foreign_keys", {
+      tableName,
+      schema,
     });
   },
 

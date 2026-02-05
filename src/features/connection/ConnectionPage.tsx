@@ -39,7 +39,7 @@ export function ConnectionPage() {
   const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
   const [status, setStatus] = useState<Status>({ type: "idle" });
 
-  const { setConnected, fetchTables } = useDbStore();
+  const { setConnected, fetchDatabaseMetadata } = useDbStore();
   const { connections, isLoaded, saveConnection, removeConnection } =
     useConnectionStore();
 
@@ -78,7 +78,7 @@ export function ConnectionPage() {
           username: formData.username,
         });
         setConnected(true);
-        await fetchTables();
+        await fetchDatabaseMetadata();
       } else {
         setStatus({ type: "error", message: result.message });
       }

@@ -25,13 +25,14 @@ export function Sidebar({
   onSettingsClick,
   onConnectionClick,
 }: SidebarProps) {
-  const { tables, isConnected, isLoading, fetchTables } = useDbStore();
+  const { tables, isConnected, isLoading, fetchDatabaseMetadata } =
+    useDbStore();
 
   useEffect(() => {
     if (isConnected && tables.length === 0) {
-      fetchTables();
+      fetchDatabaseMetadata();
     }
-  }, [isConnected, tables.length, fetchTables]);
+  }, [isConnected, tables.length, fetchDatabaseMetadata]);
 
   return (
     <SidebarRoot>
