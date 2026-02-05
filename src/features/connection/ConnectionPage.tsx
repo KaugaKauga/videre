@@ -72,7 +72,6 @@ export function ConnectionPage() {
       if (result.success) {
         setStatus({ type: "success", message: result.message });
         await saveConnection({
-          name: `${formData.database}@${formData.host}`,
           host: formData.host,
           port: formData.port,
           database: formData.database,
@@ -119,7 +118,7 @@ export function ConnectionPage() {
                   onClick={() => selectConnection(connection)}
                   className="justify-start text-muted-foreground font-normal"
                 >
-                  {connection.username}@{connection.host}:{connection.port}
+                  {connection.database}
                 </Button>
                 <button
                   onClick={(e) => {

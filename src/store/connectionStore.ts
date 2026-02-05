@@ -3,7 +3,6 @@ import { load, Store } from "@tauri-apps/plugin-store";
 
 export interface SavedConnection {
   id: string;
-  name: string;
   host: string;
   port: string;
   database: string;
@@ -75,7 +74,6 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => {
         updatedConnections.splice(existingIndex, 1);
         updatedConnections.unshift({
           ...connections[existingIndex],
-          name: connection.name,
           savedAt: Date.now(),
         });
       } else {
