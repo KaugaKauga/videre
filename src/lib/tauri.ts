@@ -31,6 +31,15 @@ export interface ForeignKeyInfo {
   foreign_column_name: string;
 }
 
+export interface IndexInfo {
+  index_name: string;
+  table_schema: string;
+  table_name: string;
+  column_name: string;
+  is_unique: boolean;
+  is_primary: boolean;
+}
+
 export interface RowData {
   columns: string[];
   values: any[];
@@ -70,6 +79,16 @@ export const db = {
     schema: string,
   ): Promise<ForeignKeyInfo[]> => {
     return await invoke<ForeignKeyInfo[]>("get_foreign_keys", {
+      tableName,
+      schema,
+    });
+  },
+
+  getIndexes: async (
+    tableName: string,
+    schema: string,
+  ): Promise<IndexInfo[]> => {
+    return await invoke<IndexInfo[]>("get_indexes", {
       tableName,
       schema,
     });

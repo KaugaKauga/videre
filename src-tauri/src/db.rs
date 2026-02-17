@@ -121,6 +121,16 @@ pub struct ForeignKeyInfo {
     pub foreign_column_name: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct IndexInfo {
+    pub index_name: String,
+    pub table_schema: String,
+    pub table_name: String,
+    pub column_name: String,
+    pub is_unique: bool,
+    pub is_primary: bool,
+}
+
 #[tauri::command]
 pub async fn get_tables(state: State<'_, DbState>) -> Result<Vec<TableInfo>, String> {
     let client_lock = state.client.lock().await;
@@ -415,6 +425,55 @@ pub async fn get_row_by_pk(
             }
 
             Ok(RowData { columns, values })
+        }
+        None => Err("Not connected to database".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_indexes(
+    table_name: String,
+    schema: String,
+    state: State<'_, DbState>,
+) -> Result<Vec<IndexInfo>, String> {
+    let client_lock = state.client.lock().await;
+
+    match client_lock.as_ref() {
+        Some(client) => {
+            let query = "
+                SELECT
+                    i.relname AS index_name,
+                    n.nspname AS schema_name,
+                    t.relname AS table_name,
+                    a.attname AS column_name,
+                    ix.indisunique AS is_unique,
+                    ix.indisprimary AS is_primary
+                FROM pg_index ix
+                JOIN pg_class i ON i.oid = ix.indexrelid
+                JOIN pg_class t ON t.oid = ix.indrelid
+                JOIN pg_namespace n ON n.oid = t.relnamespace
+                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
+                WHERE n.nspname = $1 AND t.relname = $2
+                ORDER BY i.relname, a.attnum
+            ";
+
+            match client.query(query, &[&schema, &table_name]).await {
+                Ok(rows) => {
+                    let indexes = rows
+                        .iter()
+                        .map(|row| IndexInfo {
+                            index_name: row.get(0),
+                            table_schema: row.get(1),
+                            table_name: row.get(2),
+                            column_name: row.get(3),
+                            is_unique: row.get(4),
+                            is_primary: row.get(5),
+                        })
+                        .collect();
+                    Ok(indexes)
+                }
+                Err(e) => Err(format!("Failed to fetch indexes: {}", e)),
+            }
         }
         None => Err("Not connected to database".to_string()),
     }
