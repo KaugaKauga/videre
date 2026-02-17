@@ -126,9 +126,11 @@ pub struct IndexInfo {
     pub index_name: String,
     pub table_schema: String,
     pub table_name: String,
-    pub column_name: String,
+    pub columns: Vec<String>,
     pub is_unique: bool,
     pub is_primary: bool,
+    pub index_type: String,
+    pub size_bytes: i64,
 }
 
 #[tauri::command]
@@ -440,21 +442,26 @@ pub async fn get_indexes(
 
     match client_lock.as_ref() {
         Some(client) => {
+            // Query that consolidates columns into an array and includes type + size
             let query = "
                 SELECT
                     i.relname AS index_name,
                     n.nspname AS schema_name,
                     t.relname AS table_name,
-                    a.attname AS column_name,
+                    ARRAY_AGG(a.attname ORDER BY array_position(ix.indkey, a.attnum)) AS columns,
                     ix.indisunique AS is_unique,
-                    ix.indisprimary AS is_primary
+                    ix.indisprimary AS is_primary,
+                    am.amname AS index_type,
+                    pg_relation_size(i.oid) AS size_bytes
                 FROM pg_index ix
                 JOIN pg_class i ON i.oid = ix.indexrelid
                 JOIN pg_class t ON t.oid = ix.indrelid
                 JOIN pg_namespace n ON n.oid = t.relnamespace
+                JOIN pg_am am ON i.relam = am.oid
                 JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
                 WHERE n.nspname = $1 AND t.relname = $2
-                ORDER BY i.relname, a.attnum
+                GROUP BY i.relname, n.nspname, t.relname, ix.indisunique, ix.indisprimary, am.amname, i.oid
+                ORDER BY i.relname
             ";
 
             match client.query(query, &[&schema, &table_name]).await {
@@ -465,9 +472,11 @@ pub async fn get_indexes(
                             index_name: row.get(0),
                             table_schema: row.get(1),
                             table_name: row.get(2),
-                            column_name: row.get(3),
+                            columns: row.get(3),
                             is_unique: row.get(4),
                             is_primary: row.get(5),
+                            index_type: row.get(6),
+                            size_bytes: row.get(7),
                         })
                         .collect();
                     Ok(indexes)

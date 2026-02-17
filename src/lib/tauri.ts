@@ -35,9 +35,11 @@ export interface IndexInfo {
   index_name: string;
   table_schema: string;
   table_name: string;
-  column_name: string;
+  columns: string[];
   is_unique: boolean;
   is_primary: boolean;
+  index_type: string;
+  size_bytes: number;
 }
 
 export interface RowData {
