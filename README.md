@@ -39,6 +39,12 @@ Videre is currently **read-only** — perfect for browsing and understanding you
 - **Foreign keys** — Understand table relationships
 - **Views** — Inspect view data
 
+---
+
+**Can you vibe code this?** Yeah, probably! But I already spent the time and tokens so you don't have to :)
+
+---
+
 ## Installation
 
 ### Download
