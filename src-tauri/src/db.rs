@@ -145,6 +145,14 @@ pub struct RoleInfo {
     pub member_of: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct TablePrivilege {
+    pub grantee: String,
+    pub table_schema: String,
+    pub table_name: String,
+    pub privileges: Vec<String>,
+}
+
 #[tauri::command]
 pub async fn get_tables(state: State<'_, DbState>) -> Result<Vec<TableInfo>, String> {
     let client_lock = state.client.lock().await;
@@ -545,6 +553,47 @@ pub async fn get_roles(state: State<'_, DbState>) -> Result<Vec<RoleInfo>, Strin
                     Ok(roles)
                 }
                 Err(e) => Err(format!("Failed to fetch roles: {}", e)),
+            }
+        }
+        None => Err("Not connected to database".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_table_privileges(
+    state: State<'_, DbState>,
+) -> Result<Vec<TablePrivilege>, String> {
+    let client_lock = state.client.lock().await;
+
+    match client_lock.as_ref() {
+        Some(client) => {
+            let query = "
+                SELECT
+                    grantee::text,
+                    table_schema::text,
+                    table_name::text,
+                    ARRAY_AGG(privilege_type::text ORDER BY privilege_type) AS privileges
+                FROM information_schema.table_privileges
+                WHERE grantee NOT LIKE 'pg_%'
+                  AND table_schema NOT IN ('pg_catalog', 'information_schema')
+                GROUP BY grantee, table_schema, table_name
+                ORDER BY grantee, table_schema, table_name
+            ";
+
+            match client.query(query, &[]).await {
+                Ok(rows) => {
+                    let privileges = rows
+                        .iter()
+                        .map(|row| TablePrivilege {
+                            grantee: row.get(0),
+                            table_schema: row.get(1),
+                            table_name: row.get(2),
+                            privileges: row.get(3),
+                        })
+                        .collect();
+                    Ok(privileges)
+                }
+                Err(e) => Err(format!("Failed to fetch table privileges: {}", e)),
             }
         }
         None => Err("Not connected to database".to_string()),

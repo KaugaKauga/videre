@@ -1,6 +1,14 @@
 import { useMemo } from "react";
 import { useDbStore } from "@/store/dbStore";
 import { ListTree } from "@/components/icons";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -11,7 +19,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function IndexesPage() {
-  const { tables, indexes } = useDbStore();
+  const { tables, indexes, isConnected } = useDbStore();
 
   // Flatten all indexes into a single array
   const allIndexes = useMemo(() => {
@@ -42,6 +50,17 @@ export function IndexesPage() {
     });
   }, [tables, indexes]);
 
+  if (!isConnected) {
+    return (
+      <div className="flex-1 h-full flex items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <ListTree className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>Connect to a database to view indexes</p>
+        </div>
+      </div>
+    );
+  }
+
   if (allIndexes.length === 0) {
     return (
       <div className="flex-1 h-full flex items-center justify-center">
@@ -54,97 +73,94 @@ export function IndexesPage() {
   }
 
   return (
-    <div className="flex-1 h-full p-6 overflow-auto min-h-0">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-foreground mb-2">
-            Indexes
-          </h2>
-          <p className="text-sm text-muted-foreground">
+    <div className="flex-1 h-full flex flex-col min-h-0">
+      {/* Header */}
+      <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold text-foreground">Indexes</h2>
+          <div className="text-sm text-muted-foreground">
             {allIndexes.length} index{allIndexes.length !== 1 ? "es" : ""}{" "}
             across {tables.length} table{tables.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                    Index Name
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                    Table
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                    Columns
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                    Type
-                  </th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-muted-foreground">
-                    Unique
-                  </th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-muted-foreground">
-                    Primary
-                  </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">
-                    Size
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {allIndexes.map((index, i) => (
-                  <tr
-                    key={`${index.table_schema}.${index.table_name}.${index.index_name}`}
-                    className={`border-b border-border last:border-b-0 ${
-                      i % 2 === 0 ? "bg-background" : "bg-muted/20"
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-sm text-foreground font-mono">
-                      {index.index_name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-foreground">
-                      <span className="text-muted-foreground">
-                        {index.table_schema}.
-                      </span>
-                      {index.table_name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-foreground font-mono">
-                      {index.columns.join(", ")}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-foreground">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
-                        {index.index_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center">
-                      {index.is_unique ? (
-                        <span className="text-green-600 dark:text-green-400">
-                          ✓
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center">
-                      {index.is_primary ? (
-                        <span className="text-blue-600 dark:text-blue-400">
-                          ✓
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-foreground text-right font-mono">
-                      {formatBytes(index.size_bytes)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
+        </div>
+      </div>
+
+      {/* Scrollable Table */}
+      <div className="flex-1 overflow-auto min-h-0 px-6 py-6">
+        <div className="h-full flex flex-col">
+          <Table containerClassName="overflow-x-auto">
+            <TableHeader className="sticky top-0 z-10 bg-background">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-background">
+                  Index Name
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-background">
+                  Table
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-background">
+                  Columns
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-background">
+                  Type
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-background text-center">
+                  Unique
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-background text-center">
+                  Primary
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap bg-background text-right">
+                  Size
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allIndexes.map((index) => (
+                <TableRow
+                  key={`${index.table_schema}.${index.table_name}.${index.index_name}`}
+                >
+                  <TableCell className="px-4 py-3 whitespace-nowrap font-mono">
+                    {index.index_name}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                    <span className="text-muted-foreground">
+                      {index.table_schema}.
+                    </span>
+                    {index.table_name}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap font-mono">
+                    {index.columns.join(", ")}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
+                      {index.index_type}
+                    </span>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-center">
+                    {index.is_unique ? (
+                      <span className="text-green-600 dark:text-green-400">
+                        ✓
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-center">
+                    {index.is_primary ? (
+                      <span className="text-blue-600 dark:text-blue-400">
+                        ✓
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-right font-mono">
+                    {formatBytes(index.size_bytes)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>

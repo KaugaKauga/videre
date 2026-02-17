@@ -5,6 +5,7 @@ import {
   ForeignKeyInfo,
   IndexInfo,
   RoleInfo,
+  TablePrivilege,
 } from "@/lib/tauri";
 
 // Map key is "schema.table" for efficient lookup
@@ -17,6 +18,7 @@ interface DbStore {
   foreignKeys: ForeignKeyMap;
   indexes: IndexMap;
   roles: RoleInfo[];
+  tablePrivileges: TablePrivilege[];
   isLoading: boolean;
   error: string | null;
 
@@ -31,6 +33,7 @@ interface DbStore {
     schema: string,
   ) => ForeignKeyInfo[];
   getIndexesForTable: (tableName: string, schema: string) => IndexInfo[];
+  getPrivilegesForRole: (roleName: string) => TablePrivilege[];
   disconnect: () => Promise<void>;
 }
 
@@ -40,6 +43,7 @@ export const useDbStore = create<DbStore>((set, get) => ({
   foreignKeys: {},
   indexes: {},
   roles: [],
+  tablePrivileges: [],
   isLoading: false,
   error: null,
 
@@ -65,21 +69,23 @@ export const useDbStore = create<DbStore>((set, get) => ({
 
       // Fetch foreign keys, indexes, and roles in parallel
       console.log("Fetching foreign keys, indexes, and roles...");
-      const [fkResults, indexResults, roles] = await Promise.all([
-        Promise.all(
-          tables.map(async (table) => {
-            const fks = await db.getForeignKeys(table.name, table.schema);
-            return { key: `${table.schema}.${table.name}`, fks };
-          }),
-        ),
-        Promise.all(
-          tables.map(async (table) => {
-            const idxs = await db.getIndexes(table.name, table.schema);
-            return { key: `${table.schema}.${table.name}`, idxs };
-          }),
-        ),
-        db.getRoles(),
-      ]);
+      const [fkResults, indexResults, roles, tablePrivileges] =
+        await Promise.all([
+          Promise.all(
+            tables.map(async (table) => {
+              const fks = await db.getForeignKeys(table.name, table.schema);
+              return { key: `${table.schema}.${table.name}`, fks };
+            }),
+          ),
+          Promise.all(
+            tables.map(async (table) => {
+              const idxs = await db.getIndexes(table.name, table.schema);
+              return { key: `${table.schema}.${table.name}`, idxs };
+            }),
+          ),
+          db.getRoles(),
+          db.getTablePrivileges(),
+        ]);
 
       // Build the FK map
       const foreignKeys: ForeignKeyMap = {};
@@ -104,12 +110,14 @@ export const useDbStore = create<DbStore>((set, get) => ({
       console.log(`Loaded ${totalFks} foreign keys across all tables`);
       console.log(`Loaded ${totalIndexes} indexes across all tables`);
       console.log(`Loaded ${roles.length} roles`);
+      console.log(`Loaded ${tablePrivileges.length} table privileges`);
 
       set({
         tables,
         foreignKeys,
         indexes,
         roles,
+        tablePrivileges,
         isConnected: true,
         isLoading: false,
       });
@@ -133,6 +141,10 @@ export const useDbStore = create<DbStore>((set, get) => ({
     return get().indexes[key] || [];
   },
 
+  getPrivilegesForRole: (roleName: string) => {
+    return get().tablePrivileges.filter((p) => p.grantee === roleName);
+  },
+
   disconnect: async () => {
     try {
       await db.disconnect();
@@ -142,6 +154,7 @@ export const useDbStore = create<DbStore>((set, get) => ({
         foreignKeys: {},
         indexes: {},
         roles: [],
+        tablePrivileges: [],
         error: null,
       });
     } catch (error) {

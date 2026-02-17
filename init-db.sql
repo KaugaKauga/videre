@@ -692,7 +692,7 @@ CREATE ROLE oracle_reader WITH
     CONNECTION LIMIT 10;
 
 -- Grant read-only access to all tables
-GRANT CONNECT ON DATABASE videre TO oracle_reader;
+GRANT CONNECT ON DATABASE videre_test TO oracle_reader;
 GRANT USAGE ON SCHEMA public TO oracle_reader;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO oracle_reader;
 
@@ -707,7 +707,7 @@ CREATE ROLE temple_admin WITH
     VALID UNTIL '2026-12-31';
 
 -- Grant read/write access
-GRANT CONNECT ON DATABASE videre TO temple_admin;
+GRANT CONNECT ON DATABASE videre_test TO temple_admin;
 GRANT USAGE ON SCHEMA public TO temple_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO temple_admin;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO temple_admin;

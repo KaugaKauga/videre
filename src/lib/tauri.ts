@@ -53,6 +53,13 @@ export interface RoleInfo {
   member_of: string[];
 }
 
+export interface TablePrivilege {
+  grantee: string;
+  table_schema: string;
+  table_name: string;
+  privileges: string[];
+}
+
 export interface RowData {
   columns: string[];
   values: any[];
@@ -109,6 +116,10 @@ export const db = {
 
   getRoles: async (): Promise<RoleInfo[]> => {
     return await invoke<RoleInfo[]>("get_roles");
+  },
+
+  getTablePrivileges: async (): Promise<TablePrivilege[]> => {
+    return await invoke<TablePrivilege[]>("get_table_privileges");
   },
 
   getRowByPk: async (
