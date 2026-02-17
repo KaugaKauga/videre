@@ -6,6 +6,7 @@ import { EmptyState } from "./features/empty/EmptyState";
 import { EmptyTab } from "./features/empty/EmptyTab";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { ConnectionPage } from "./features/connection/ConnectionPage";
+import { IndexesPage } from "./features/indexes/IndexesPage";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { SidebarProvider, SidebarInset } from "./components/ui/sidebar";
 
@@ -130,6 +131,43 @@ function App() {
     }
   };
 
+  const handleIndexesClick = () => {
+    // Check if indexes tab already exists
+    const existingTab = tabs.find((tab) => tab.type === "indexes");
+
+    if (existingTab) {
+      // If tab exists, just focus it
+      setActiveTabId(existingTab.id);
+      return;
+    }
+
+    // Check if active tab is empty - if so, reuse it
+    const activeTab = tabs.find((tab) => tab.id === activeTabId);
+    if (activeTab && activeTab.type === "empty") {
+      // Reuse the active empty tab by updating it in place
+      const updatedTabs = tabs.map((tab) =>
+        tab.id === activeTabId
+          ? {
+              id: activeTabId, // Keep the same ID
+              label: "Indexes",
+              type: "indexes" as const,
+            }
+          : tab,
+      );
+      setTabs(updatedTabs);
+      // Active tab ID stays the same
+    } else {
+      // Create new indexes tab
+      const newTab: Tab = {
+        id: `indexes-${Date.now()}`,
+        label: "Indexes",
+        type: "indexes",
+      };
+      setTabs([...tabs, newTab]);
+      setActiveTabId(newTab.id);
+    }
+  };
+
   const handleTabClick = (tabId: string) => {
     setActiveTabId(tabId);
   };
@@ -238,6 +276,10 @@ function App() {
       return <ConnectionPage />;
     }
 
+    if (activeTab.type === "indexes") {
+      return <IndexesPage />;
+    }
+
     return <EmptyState />;
   };
 
@@ -247,6 +289,7 @@ function App() {
         onTableClick={handleTableClick}
         onSettingsClick={handleSettingsClick}
         onConnectionClick={handleConnectionClick}
+        onIndexesClick={handleIndexesClick}
       />
       <SidebarInset className="h-full overflow-hidden">
         <div className="flex flex-col h-full overflow-hidden">

@@ -5,6 +5,7 @@ export { ChevronLeft } from "./ChevronLeft";
 export { ChevronRight } from "./ChevronRight";
 export { Database } from "./Database";
 export { FileText } from "./FileText";
+export { ListTree } from "./ListTree";
 export { Loader } from "./Loader";
 export { Moon } from "./Moon";
 export { Palette } from "./Palette";

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export interface Tab {
   id: string;
   label: string;
-  type: "table" | "empty" | "settings" | "connection";
+  type: "table" | "empty" | "settings" | "connection" | "indexes";
   tableName?: string;
   schema?: string;
 }

@@ -1,5 +1,12 @@
 import { useEffect } from "react";
-import { Database, Table, Settings, Plug, Loader } from "@/components/icons";
+import {
+  Database,
+  Table,
+  Settings,
+  Plug,
+  Loader,
+  ListTree,
+} from "@/components/icons";
 import {
   Sidebar as SidebarRoot,
   SidebarContent,
@@ -18,12 +25,14 @@ interface SidebarProps {
   onTableClick: (tableName: string, schema: string) => void;
   onSettingsClick: () => void;
   onConnectionClick: () => void;
+  onIndexesClick: () => void;
 }
 
 export function Sidebar({
   onTableClick,
   onSettingsClick,
   onConnectionClick,
+  onIndexesClick,
 }: SidebarProps) {
   const { tables, isConnected, isLoading, fetchDatabaseMetadata } =
     useDbStore();
@@ -45,10 +54,10 @@ export function Sidebar({
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
+      <SidebarContent className="flex flex-col">
+        <SidebarGroup className="flex-1 min-h-0 flex flex-col">
           <SidebarGroupLabel>Tables</SidebarGroupLabel>
-          <SidebarGroupContent>
+          <SidebarGroupContent className="flex-1 overflow-y-auto min-h-0">
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
                 <Loader className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -73,6 +82,18 @@ export function Sidebar({
             )}
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Database-level items pinned at bottom of content */}
+        <div className="border-t border-border mt-auto">
+          <SidebarMenu className="p-2">
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={onIndexesClick}>
+                <ListTree />
+                <span>Indexes</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </div>
       </SidebarContent>
 
       <SidebarFooter>
