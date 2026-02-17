@@ -42,6 +42,17 @@ export interface IndexInfo {
   size_bytes: number;
 }
 
+export interface RoleInfo {
+  role_name: string;
+  is_superuser: boolean;
+  can_login: boolean;
+  can_create_db: boolean;
+  can_create_role: boolean;
+  connection_limit: number;
+  valid_until: string | null;
+  member_of: string[];
+}
+
 export interface RowData {
   columns: string[];
   values: any[];
@@ -94,6 +105,10 @@ export const db = {
       tableName,
       schema,
     });
+  },
+
+  getRoles: async (): Promise<RoleInfo[]> => {
+    return await invoke<RoleInfo[]>("get_roles");
   },
 
   getRowByPk: async (

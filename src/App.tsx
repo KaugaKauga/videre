@@ -7,6 +7,7 @@ import { EmptyTab } from "./features/empty/EmptyTab";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { ConnectionPage } from "./features/connection/ConnectionPage";
 import { IndexesPage } from "./features/indexes/IndexesPage";
+import { RolesPage } from "./features/roles/RolesPage";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { SidebarProvider, SidebarInset } from "./components/ui/sidebar";
 
@@ -125,6 +126,43 @@ function App() {
         id: `connection-${Date.now()}`,
         label: "Connection",
         type: "connection" as any,
+      };
+      setTabs([...tabs, newTab]);
+      setActiveTabId(newTab.id);
+    }
+  };
+
+  const handleRolesClick = () => {
+    // Check if roles tab already exists
+    const existingTab = tabs.find((tab) => tab.type === "roles");
+
+    if (existingTab) {
+      // If tab exists, just focus it
+      setActiveTabId(existingTab.id);
+      return;
+    }
+
+    // Check if active tab is empty - if so, reuse it
+    const activeTab = tabs.find((tab) => tab.id === activeTabId);
+    if (activeTab && activeTab.type === "empty") {
+      // Reuse the active empty tab by updating it in place
+      const updatedTabs = tabs.map((tab) =>
+        tab.id === activeTabId
+          ? {
+              id: activeTabId, // Keep the same ID
+              label: "Roles",
+              type: "roles" as const,
+            }
+          : tab,
+      );
+      setTabs(updatedTabs);
+      // Active tab ID stays the same
+    } else {
+      // Create new roles tab
+      const newTab: Tab = {
+        id: `roles-${Date.now()}`,
+        label: "Roles",
+        type: "roles",
       };
       setTabs([...tabs, newTab]);
       setActiveTabId(newTab.id);
@@ -280,6 +318,10 @@ function App() {
       return <IndexesPage />;
     }
 
+    if (activeTab.type === "roles") {
+      return <RolesPage />;
+    }
+
     return <EmptyState />;
   };
 
@@ -290,6 +332,7 @@ function App() {
         onSettingsClick={handleSettingsClick}
         onConnectionClick={handleConnectionClick}
         onIndexesClick={handleIndexesClick}
+        onRolesClick={handleRolesClick}
       />
       <SidebarInset className="h-full overflow-hidden">
         <div className="flex flex-col h-full overflow-hidden">

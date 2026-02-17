@@ -677,3 +677,59 @@ LEFT JOIN gods g2 ON r.entity2_id = g2.id AND r.entity2_type = 'god'
 LEFT JOIN titans t2 ON r.entity2_id = t2.id AND r.entity2_type = 'titan'
 LEFT JOIN heroes h2 ON r.entity2_id = h2.id AND r.entity2_type = 'hero'
 LEFT JOIN primordials p2 ON r.entity2_id = p2.id AND r.entity2_type = 'primordial';
+
+-- =====================================================
+-- Test Roles for Videre Roles UI
+-- =====================================================
+
+-- Create a read-only role for oracle seers (can only SELECT)
+CREATE ROLE oracle_reader WITH
+    LOGIN
+    PASSWORD 'delphi123'
+    NOSUPERUSER
+    NOCREATEDB
+    NOCREATEROLE
+    CONNECTION LIMIT 10;
+
+-- Grant read-only access to all tables
+GRANT CONNECT ON DATABASE videre TO oracle_reader;
+GRANT USAGE ON SCHEMA public TO oracle_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO oracle_reader;
+
+-- Create a temple administrator role (can read/write but not admin)
+CREATE ROLE temple_admin WITH
+    LOGIN
+    PASSWORD 'olympus456'
+    NOSUPERUSER
+    NOCREATEDB
+    NOCREATEROLE
+    CONNECTION LIMIT 50
+    VALID UNTIL '2026-12-31';
+
+-- Grant read/write access
+GRANT CONNECT ON DATABASE videre TO temple_admin;
+GRANT USAGE ON SCHEMA public TO temple_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO temple_admin;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO temple_admin;
+
+-- Create a DBA role for Mount Olympus (full admin powers)
+CREATE ROLE olympus_dba WITH
+    LOGIN
+    PASSWORD 'zeus789'
+    SUPERUSER
+    CREATEDB
+    CREATEROLE
+    CONNECTION LIMIT -1;
+
+-- Create a group role for readonly access (no login, used for inheritance)
+CREATE ROLE readonly_group WITH
+    NOLOGIN
+    NOSUPERUSER
+    NOCREATEDB
+    NOCREATEROLE;
+
+GRANT USAGE ON SCHEMA public TO readonly_group;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_group;
+
+-- Make oracle_reader a member of readonly_group (inherits permissions)
+GRANT readonly_group TO oracle_reader;

@@ -6,6 +6,7 @@ import {
   Plug,
   Loader,
   ListTree,
+  Users,
 } from "@/components/icons";
 import {
   Sidebar as SidebarRoot,
@@ -26,6 +27,7 @@ interface SidebarProps {
   onSettingsClick: () => void;
   onConnectionClick: () => void;
   onIndexesClick: () => void;
+  onRolesClick: () => void;
 }
 
 export function Sidebar({
@@ -33,6 +35,7 @@ export function Sidebar({
   onSettingsClick,
   onConnectionClick,
   onIndexesClick,
+  onRolesClick,
 }: SidebarProps) {
   const { tables, isConnected, isLoading, fetchDatabaseMetadata } =
     useDbStore();
@@ -90,6 +93,12 @@ export function Sidebar({
               <SidebarMenuButton onClick={onIndexesClick}>
                 <ListTree />
                 <span>Indexes</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={onRolesClick}>
+                <Users />
+                <span>Roles</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

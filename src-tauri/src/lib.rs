@@ -15,6 +15,7 @@ pub fn run() {
             db::get_table_data,
             db::get_foreign_keys,
             db::get_indexes,
+            db::get_roles,
             db::get_row_by_pk,
             db::disconnect_db,
         ])

@@ -14,5 +14,6 @@ export { Settings } from "./Settings";
 export { Sun } from "./Sun";
 export { Table } from "./Table";
 export { Trash } from "./Trash";
+export { Users } from "./Users";
 export { X } from "./X";
 export { XCircle } from "./XCircle";

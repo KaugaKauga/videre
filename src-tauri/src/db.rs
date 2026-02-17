@@ -133,6 +133,18 @@ pub struct IndexInfo {
     pub size_bytes: i64,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct RoleInfo {
+    pub role_name: String,
+    pub is_superuser: bool,
+    pub can_login: bool,
+    pub can_create_db: bool,
+    pub can_create_role: bool,
+    pub connection_limit: i32,
+    pub valid_until: Option<String>,
+    pub member_of: Vec<String>,
+}
+
 #[tauri::command]
 pub async fn get_tables(state: State<'_, DbState>) -> Result<Vec<TableInfo>, String> {
     let client_lock = state.client.lock().await;
@@ -482,6 +494,57 @@ pub async fn get_indexes(
                     Ok(indexes)
                 }
                 Err(e) => Err(format!("Failed to fetch indexes: {}", e)),
+            }
+        }
+        None => Err("Not connected to database".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_roles(state: State<'_, DbState>) -> Result<Vec<RoleInfo>, String> {
+    let client_lock = state.client.lock().await;
+
+    match client_lock.as_ref() {
+        Some(client) => {
+            let query = "
+                SELECT
+                    r.rolname AS role_name,
+                    r.rolsuper AS is_superuser,
+                    r.rolcanlogin AS can_login,
+                    r.rolcreatedb AS can_create_db,
+                    r.rolcreaterole AS can_create_role,
+                    r.rolconnlimit AS connection_limit,
+                    r.rolvaliduntil::text AS valid_until,
+                    COALESCE(
+                        ARRAY_AGG(g.rolname ORDER BY g.rolname) FILTER (WHERE g.rolname IS NOT NULL),
+                        ARRAY[]::text[]
+                    ) AS member_of
+                FROM pg_roles r
+                LEFT JOIN pg_auth_members m ON r.oid = m.member
+                LEFT JOIN pg_roles g ON m.roleid = g.oid
+                WHERE r.rolname NOT LIKE 'pg_%'
+                GROUP BY r.rolname, r.rolsuper, r.rolcanlogin, r.rolcreatedb, r.rolcreaterole, r.rolconnlimit, r.rolvaliduntil
+                ORDER BY r.rolname
+            ";
+
+            match client.query(query, &[]).await {
+                Ok(rows) => {
+                    let roles = rows
+                        .iter()
+                        .map(|row| RoleInfo {
+                            role_name: row.get(0),
+                            is_superuser: row.get(1),
+                            can_login: row.get(2),
+                            can_create_db: row.get(3),
+                            can_create_role: row.get(4),
+                            connection_limit: row.get(5),
+                            valid_until: row.get(6),
+                            member_of: row.get(7),
+                        })
+                        .collect();
+                    Ok(roles)
+                }
+                Err(e) => Err(format!("Failed to fetch roles: {}", e)),
             }
         }
         None => Err("Not connected to database".to_string()),

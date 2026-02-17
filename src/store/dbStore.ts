@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import { db, TableInfo, ForeignKeyInfo, IndexInfo } from "@/lib/tauri";
+import {
+  db,
+  TableInfo,
+  ForeignKeyInfo,
+  IndexInfo,
+  RoleInfo,
+} from "@/lib/tauri";
 
 // Map key is "schema.table" for efficient lookup
 type ForeignKeyMap = Record<string, ForeignKeyInfo[]>;
@@ -10,6 +16,7 @@ interface DbStore {
   tables: TableInfo[];
   foreignKeys: ForeignKeyMap;
   indexes: IndexMap;
+  roles: RoleInfo[];
   isLoading: boolean;
   error: string | null;
 
@@ -32,6 +39,7 @@ export const useDbStore = create<DbStore>((set, get) => ({
   tables: [],
   foreignKeys: {},
   indexes: {},
+  roles: [],
   isLoading: false,
   error: null,
 
@@ -55,9 +63,9 @@ export const useDbStore = create<DbStore>((set, get) => ({
         tables.map((t) => `${t.schema}.${t.name}`),
       );
 
-      // Fetch foreign keys and indexes for all tables in parallel
-      console.log("Fetching foreign keys and indexes for all tables...");
-      const [fkResults, indexResults] = await Promise.all([
+      // Fetch foreign keys, indexes, and roles in parallel
+      console.log("Fetching foreign keys, indexes, and roles...");
+      const [fkResults, indexResults, roles] = await Promise.all([
         Promise.all(
           tables.map(async (table) => {
             const fks = await db.getForeignKeys(table.name, table.schema);
@@ -70,6 +78,7 @@ export const useDbStore = create<DbStore>((set, get) => ({
             return { key: `${table.schema}.${table.name}`, idxs };
           }),
         ),
+        db.getRoles(),
       ]);
 
       // Build the FK map
@@ -94,11 +103,13 @@ export const useDbStore = create<DbStore>((set, get) => ({
       );
       console.log(`Loaded ${totalFks} foreign keys across all tables`);
       console.log(`Loaded ${totalIndexes} indexes across all tables`);
+      console.log(`Loaded ${roles.length} roles`);
 
       set({
         tables,
         foreignKeys,
         indexes,
+        roles,
         isConnected: true,
         isLoading: false,
       });
@@ -130,6 +141,7 @@ export const useDbStore = create<DbStore>((set, get) => ({
         tables: [],
         foreignKeys: {},
         indexes: {},
+        roles: [],
         error: null,
       });
     } catch (error) {
