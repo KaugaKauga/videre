@@ -29,6 +29,16 @@ Your data is yours. Videre runs entirely on your machine.
 - **Minimal dependencies** — We keep the dependency count low to reduce supply chain risks
 - **Open source** — The code is fully auditable
 
+## What You Can Inspect
+
+Videre is currently **read-only** — perfect for browsing and understanding your data without risk of accidental changes.
+
+- **Tables** — Browse data with pagination
+- **Indexes** — View index configurations
+- **Roles** — See database roles and permissions
+- **Foreign keys** — Understand table relationships
+- **Views** — Inspect view data
+
 ## Installation
 
 ### Download
@@ -80,12 +90,26 @@ bun run tauri dev       # Run the app
 
 ## Roadmap
 
-- [ ] MySQL support
-- [ ] SQLite support
+**More to inspect**
+- [ ] Sequences
+- [ ] Constraints
+- [ ] Stored procedures / Functions
+
+**Usability**
 - [ ] Table filtering and search
-- [ ] Column sorting
+- [x] Column sorting
 - [ ] Export to CSV/JSON
 - [ ] Connection profiles (save multiple databases)
+
+**Edit capabilities**
+- [ ] Insert rows
+- [ ] Update rows
+- [ ] Delete rows
+- [ ] Query editor
+
+**More databases**
+- [ ] MySQL support
+- [ ] SQLite support
 
 ## License
 
