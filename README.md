@@ -1,8 +1,11 @@
 <p align="center">
-  <h1 align="center">Videre</h1>
-  <p align="center">
-    A simple and private PostgreSQL inspector.
-  </p>
+  <img src="magnifying-glass.png" alt="Videre" width="400" />
+</p>
+
+<h1 align="center">Videre</h1>
+
+<p align="center">
+  A simple and private PostgreSQL inspector.
 </p>
 
 ---
