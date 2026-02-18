@@ -280,7 +280,7 @@ export function TablePage({ tableName, schema = "public" }: TableViewProps) {
     );
   }
 
-  if (!data || data.rows.length === 0) {
+  if (!data) {
     return (
       <div className="flex-1 p-6">
         <div className="max-w-7xl mx-auto">
@@ -288,12 +288,14 @@ export function TablePage({ tableName, schema = "public" }: TableViewProps) {
             {tableName}
           </h2>
           <div className="bg-card border border-border rounded-lg p-8 text-center">
-            <p className="text-muted-foreground">No data found in this table</p>
+            <p className="text-muted-foreground">No data available</p>
           </div>
         </div>
       </div>
     );
   }
+
+  const isEmpty = data.rows.length === 0;
 
   return (
     <div className="flex-1 h-full flex flex-col min-h-0">
@@ -304,7 +306,11 @@ export function TablePage({ tableName, schema = "public" }: TableViewProps) {
             {tableName}
           </h2>
           <div className="text-sm text-muted-foreground">
-            {data.total_rows.toLocaleString()} total rows
+            {isEmpty ? (
+              <span>Empty table • {data.columns.length} columns</span>
+            ) : (
+              <span>{data.total_rows.toLocaleString()} total rows</span>
+            )}
           </div>
         </div>
       </div>
@@ -317,42 +323,49 @@ export function TablePage({ tableName, schema = "public" }: TableViewProps) {
             foreignKeys={foreignKeys}
             onFkClick={handleFkClick}
           />
+          {isEmpty && (
+            <div className="flex-1 flex items-center justify-center py-12">
+              <p className="text-muted-foreground">No rows in this table</p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Footer - Sticky at bottom */}
-      <div className="flex-shrink-0 px-6 py-4 border-t border-border bg-background">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Showing {page * limit + 1} to{" "}
-            {Math.min((page + 1) * limit, data.total_rows)} of{" "}
-            {data.total_rows.toLocaleString()} rows
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPage((p) => p - 1)}
-              disabled={!hasPrevPage}
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Previous
-            </Button>
+      {!isEmpty && (
+        <div className="flex-shrink-0 px-6 py-4 border-t border-border bg-background">
+          <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              Page {page + 1} of {totalPages}
+              Showing {page * limit + 1} to{" "}
+              {Math.min((page + 1) * limit, data.total_rows)} of{" "}
+              {data.total_rows.toLocaleString()} rows
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!hasNextPage}
-            >
-              Next
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPage((p) => p - 1)}
+                disabled={!hasPrevPage}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                Page {page + 1} of {totalPages}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={!hasNextPage}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* FK Row Preview Sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
