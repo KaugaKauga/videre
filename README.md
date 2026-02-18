@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="magnifying-glass.png" alt="Videre" width="400" />
+  <img src="magnifying-glass.png" alt="Videre" width="600" />
 </p>
 
 <h1 align="center">Videre</h1>
