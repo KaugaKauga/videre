@@ -1,13 +1,13 @@
 <h1 align="center">Videre</h1>
 
 <p align="center">
-  A simple and private PostgreSQL inspector.
+  A simplicty and privacy focused PostgreSQL inspector.
 </p>
 
 <p align="center">
   <img src="magnifying-glass.png" alt="Videre" width="600" />
 </p>
----
+
 
 ## Why Videre?
 
