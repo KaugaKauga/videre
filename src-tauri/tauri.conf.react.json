@@ -4,13 +4,12 @@
   "version": "0.1.0",
   "identifier": "com.vcl.videre",
   "build": {
-    "beforeDevCommand": "trunk serve",
+    "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "trunk build",
+    "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": true,
     "windows": [
       {
         "title": "videre",
