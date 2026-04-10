@@ -1,26 +1,494 @@
-* {
+/* ===================================================================
+   Videre – Base Stylesheet
+   Uses CSS custom properties for theming (amethyst-haze default).
+   No Tailwind, no preprocessor — just CSS.
+   =================================================================== */
+
+/* --- Reset ------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-html, body {
+/* --- Theme tokens (amethyst-haze light, default) ----------------- */
+
+:root {
+    --background: oklch(0.9777 0.0041 301.4256);
+    --foreground: oklch(0.3651 0.0325 287.0807);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.3651 0.0325 287.0807);
+    --primary: oklch(0.6104 0.0767 299.7335);
+    --primary-foreground: oklch(0.9777 0.0041 301.4256);
+    --secondary: oklch(0.8957 0.0265 300.2416);
+    --secondary-foreground: oklch(0.3651 0.0325 287.0807);
+    --muted: oklch(0.8906 0.0139 299.7754);
+    --muted-foreground: oklch(0.5288 0.0375 290.7895);
+    --accent: oklch(0.7889 0.0802 359.9375);
+    --accent-foreground: oklch(0.3394 0.0441 1.7583);
+    --destructive: oklch(0.6332 0.1578 22.6734);
+    --destructive-foreground: oklch(0.9777 0.0041 301.4256);
+    --border: oklch(0.8447 0.0226 300.1421);
+    --input: oklch(0.9329 0.0124 301.2783);
+    --ring: oklch(0.6104 0.0767 299.7335);
+    --radius: 0.5rem;
+    --sidebar: oklch(0.9554 0.0082 301.3541);
+    --sidebar-foreground: oklch(0.3651 0.0325 287.0807);
+    --sidebar-border: oklch(0.8719 0.0198 302.169);
+    --font-sans:
+        "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+    --font-mono: "Fira Code", "Courier New", monospace;
+
+    /* Colour helpers for status states */
+    --success: oklch(0.55 0.16 145);
+    --success-bg: oklch(0.55 0.16 145 / 0.1);
+    --error: oklch(0.55 0.18 25);
+    --error-bg: oklch(0.55 0.18 25 / 0.1);
+}
+
+/* --- Dark mode (amethyst-haze dark) ------------------------------ */
+
+.dark {
+    --background: oklch(0.2166 0.0215 292.8474);
+    --foreground: oklch(0.9053 0.0245 293.557);
+    --card: oklch(0.2544 0.0301 292.7315);
+    --card-foreground: oklch(0.9053 0.0245 293.557);
+    --primary: oklch(0.7058 0.0777 302.0489);
+    --primary-foreground: oklch(0.2166 0.0215 292.8474);
+    --secondary: oklch(0.4604 0.0472 295.5578);
+    --secondary-foreground: oklch(0.9053 0.0245 293.557);
+    --muted: oklch(0.256 0.032 294.838);
+    --muted-foreground: oklch(0.6974 0.0282 300.0614);
+    --accent: oklch(0.3181 0.0321 308.6149);
+    --accent-foreground: oklch(0.8391 0.0692 2.6681);
+    --destructive: oklch(0.6875 0.142 21.4566);
+    --destructive-foreground: oklch(0.2166 0.0215 292.8474);
+    --border: oklch(0.3063 0.0359 293.3367);
+    --input: oklch(0.2847 0.0346 291.2726);
+    --ring: oklch(0.7058 0.0777 302.0489);
+    --sidebar: oklch(0.1985 0.02 293.6639);
+    --sidebar-foreground: oklch(0.9053 0.0245 293.557);
+    --sidebar-border: oklch(0.2847 0.0346 291.2726);
+
+    --success: oklch(0.65 0.16 145);
+    --success-bg: oklch(0.65 0.16 145 / 0.12);
+    --error: oklch(0.65 0.16 25);
+    --error-bg: oklch(0.65 0.16 25 / 0.12);
+}
+
+/* --- Base -------------------------------------------------------- */
+
+html,
+body {
     height: 100%;
     width: 100%;
     overflow: hidden;
     user-select: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-size: 16px;
+    -webkit-user-select: none;
+    font-family: var(--font-sans);
+    font-size: 14px;
     line-height: 1.5;
-    color: #1a1a2e;
-    background-color: #f0f0f5;
+    color: var(--foreground);
+    background-color: var(--background);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Typography -------------------------------------------------- */
+
+h1,
+h2,
+h3 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
 }
 
 h1 {
     font-size: 1.5rem;
-    font-weight: 600;
+    line-height: 1.25;
+}
+
+h2 {
+    font-size: 1.125rem;
+    line-height: 1.35;
+}
+
+h3 {
+    font-size: 0.875rem;
+    line-height: 1.4;
 }
 
 p {
-    color: #555;
+    color: var(--muted-foreground);
+}
+
+small,
+.text-sm {
+    font-size: 0.8125rem;
+}
+
+.text-xs {
+    font-size: 0.75rem;
+}
+
+.text-muted {
+    color: var(--muted-foreground);
+}
+
+/* --- Card -------------------------------------------------------- */
+
+.card {
+    background: var(--card);
+    color: var(--card-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow:
+        0 1px 3px 0 oklch(0 0 0 / 0.04),
+        0 1px 2px -1px oklch(0 0 0 / 0.04);
+}
+
+.card-header {
+    padding: 1.5rem 1.5rem 0;
+}
+
+.card-header h1 {
+    margin-bottom: 0.25rem;
+}
+
+.card-description {
+    color: var(--muted-foreground);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.card-content {
+    padding: 1.5rem;
+}
+
+/* --- Form fields ------------------------------------------------- */
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.field + .field {
+    margin-top: 0.875rem;
+}
+
+label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--foreground);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"] {
+    width: 100%;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    line-height: 1;
+    color: var(--foreground);
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    outline: none;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+input::placeholder {
+    color: var(--muted-foreground);
+    opacity: 0.6;
+}
+
+input:focus {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px oklch(from var(--ring) l c h / 0.18);
+}
+
+/* --- Buttons ----------------------------------------------------- */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.25rem;
+    padding: 0 1rem;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    border: 1px solid transparent;
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    outline: none;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        opacity 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn:focus-visible {
+    box-shadow:
+        0 0 0 2px var(--background),
+        0 0 0 4px var(--ring);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--primary-foreground);
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    border-color: var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--muted);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--foreground);
+}
+
+.btn-ghost:hover {
+    background: var(--muted);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* --- Status messages --------------------------------------------- */
+
+.status-msg {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+.status-success {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.status-error {
+    background: var(--error-bg);
+    color: var(--error);
+}
+
+/* --- Connection page --------------------------------------------- */
+
+.connection-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    background: var(--background);
+    padding: 1.5rem;
+    overflow: auto;
+}
+
+.connection-layout {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+}
+
+.connection-card {
+    width: 24rem;
+}
+
+.connection-card .card-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.connection-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.connection-title-row svg {
+    width: 1.375rem;
+    height: 1.375rem;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.connection-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+.connection-actions .btn {
+    flex: 1;
+}
+
+/* --- Recents sidebar --------------------------------------------- */
+
+.recents {
+    position: absolute;
+    right: 100%;
+    top: 0;
+    margin-right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 10rem;
+}
+
+.recents-heading {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+    padding: 0 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.recent-item {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.recent-item .btn-ghost {
+    flex: 1;
+    justify-content: flex-start;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+    height: 2rem;
+    padding: 0 0.75rem;
+    border-radius: calc(var(--radius) - 2px);
+}
+
+.recent-item .btn-ghost:hover {
+    color: var(--foreground);
+}
+
+.recent-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    background: transparent;
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    opacity: 0;
+    transition:
+        opacity 0.15s ease,
+        background-color 0.15s ease;
+    color: var(--destructive);
+}
+
+.recent-item:hover .recent-delete {
+    opacity: 1;
+}
+
+.recent-delete:hover {
+    background: var(--error-bg);
+}
+
+.recent-delete svg {
+    width: 0.8125rem;
+    height: 0.8125rem;
+}
+
+/* --- Icons (inline SVG sizing) ----------------------------------- */
+
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.icon svg {
+    width: 1em;
+    height: 1em;
+}
+
+.icon-sm svg {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+/* --- Spinner animation ------------------------------------------- */
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 0.8s linear infinite;
+}
+
+/* --- Utility ----------------------------------------------------- */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.hidden {
+    display: none;
 }
