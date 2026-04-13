@@ -1,6 +1,11 @@
 mod connection;
 mod connection_store;
 mod db_store;
+mod empty;
+mod shell;
+mod sidebar;
+mod tab_bar;
+mod tab_store;
 mod tauri;
 mod types;
 
@@ -8,6 +13,7 @@ use connection::ConnectionPage;
 use connection_store::ConnectionStore;
 use db_store::DbStore;
 use leptos::prelude::*;
+use shell::Shell;
 
 fn main() {
     leptos::mount::mount_to_body(App);
@@ -21,6 +27,12 @@ fn App() -> impl IntoView {
     provide_context(db_store);
 
     view! {
-        <ConnectionPage />
+        {move || {
+            if db_store.is_connected.get() {
+                view! { <Shell /> }.into_any()
+            } else {
+                view! { <ConnectionPage /> }.into_any()
+            }
+        }}
     }
 }

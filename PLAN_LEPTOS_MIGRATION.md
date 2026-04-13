@@ -55,56 +55,65 @@ The Rust backend (`src-tauri/`) is **untouched** — only the frontend changes.
 
 ---
 
-## Remaining
-
 ### 7. Database Store (equivalent of `dbStore.ts`)
 The global reactive state that tracks connection status and all fetched metadata.
 
-- [ ] Create `db_store.rs`
-- [ ] Signals: `is_connected`, `tables`, `foreign_keys`, `indexes`, `roles`, `table_privileges`, `is_loading`, `error`
-- [ ] `fetch_database_metadata()` — calls `get_tables`, `get_foreign_keys`, `get_indexes`, `get_roles`, `get_table_privileges` in parallel
-- [ ] `disconnect()` — calls `disconnect_db`, resets all state
-- [ ] Lookup helpers: `get_foreign_keys_for_table()`, `get_indexes_for_table()`, `get_privileges_for_role()`
-- [ ] Provide via context alongside `ConnectionStore`
-- [ ] Wire into ConnectionPage — on successful connect, set connected + fetch metadata
+- [x] Create `db_store.rs`
+- [x] Signals: `is_connected`, `tables`, `foreign_keys`, `indexes`, `roles`, `table_privileges`, `is_loading`, `error`
+- [x] `fetch_database_metadata()` — calls `get_tables`, `get_foreign_keys`, `get_indexes`, `get_roles`, `get_table_privileges` sequentially (local IPC, no perf difference)
+- [x] `disconnect()` — calls `disconnect_db`, resets all state
+- [x] Lookup helpers: `get_foreign_keys_for_table()`, `get_indexes_for_table()`, `get_privileges_for_role()`
+- [x] Provide via context alongside `ConnectionStore`
+- [x] Wire into ConnectionPage — on successful connect, set connected + fetch metadata
 
 ### 8. App Shell — Sidebar
 Port `features/shell/Sidebar.tsx`. A collapsible sidebar showing:
 
-- [ ] App header ("Videre" + database icon)
-- [ ] Tables list (from `DbStore.tables`) — click opens a table tab
-- [ ] Loading spinner when fetching metadata
-- [ ] "Not connected" / "No tables found" empty states
-- [ ] Bottom section: Indexes, Roles links
-- [ ] Footer: Connection, Settings links
-- [ ] Style the sidebar using existing `--sidebar-*` CSS variables
+- [x] App header ("Videre" + database icon)
+- [x] Tables list (from `DbStore.tables`) — click opens a table tab
+- [x] Loading spinner when fetching metadata
+- [x] "No tables found" empty state
+- [x] Bottom section: Indexes, Roles links
+- [x] Footer: Connection, Settings links
+- [x] Style the sidebar using existing `--sidebar-*` CSS variables
 
 ### 9. App Shell — Tab Bar
 Port `features/shell/TabBar.tsx`. A horizontal tab strip:
 
-- [ ] Tab types: `table`, `empty`, `settings`, `connection`, `indexes`, `roles`
-- [ ] Active tab indicator (bottom border)
-- [ ] Close button per tab (X icon, visible on hover)
-- [ ] Click to switch tabs
+- [x] Tab types: `table`, `empty`, `settings`, `connection`, `indexes`, `roles`
+- [x] Active tab indicator (bottom border)
+- [x] Close button per tab (X icon, visible on hover)
+- [x] Click to switch tabs
 
 ### 10. App Shell — Tab State & Routing
 Port the tab management logic from `App.tsx`. No router — tabs are managed via signals.
 
-- [ ] `tabs: RwSignal<Vec<Tab>>` and `active_tab_id: RwSignal<Option<String>>`
-- [ ] `open_table_tab()` — reuse existing or replace empty tab
-- [ ] `open_singleton_tab()` — for settings, connection, indexes, roles (only one instance)
-- [ ] `open_empty_tab()` — "Untitled N" naming
-- [ ] `close_tab()` — activate adjacent tab on close
-- [ ] Content area renders the active tab's component
+- [x] `tabs: RwSignal<Vec<Tab>>` and `active_tab_id: RwSignal<Option<String>>`
+- [x] `open_table_tab()` — reuse existing or replace empty tab
+- [x] `open_singleton_tab()` — for settings, connection, indexes, roles (only one instance)
+- [x] `open_empty_tab()` — "Untitled N" naming
+- [x] `close_tab()` — activate last remaining tab on close
+- [x] Content area renders the active tab's component (placeholders for table/settings/indexes/roles)
+- [x] Full-screen ConnectionPage when not connected; Shell when connected
 
 ### 11. Keyboard Shortcuts
 Port `hooks/useKeyboardShortcuts.ts`.
 
-- [ ] `Cmd/Ctrl + T` — new empty tab
-- [ ] `Cmd/Ctrl + W` — close active tab
-- [ ] `Cmd/Ctrl + 1-9` — switch to tab by index
-- [ ] Platform detection (Mac → Meta key, others → Ctrl)
-- [ ] Use `web_sys` keydown event listener + `Effect` for cleanup
+- [x] `Cmd/Ctrl + T` — new empty tab
+- [x] `Cmd/Ctrl + W` — close active tab
+- [x] `Cmd/Ctrl + 1-9` — switch to tab by index
+- [x] Platform detection (Mac → Meta key, others → Ctrl)
+- [x] `web_sys` keydown event listener via `wasm_bindgen::Closure` + `on_cleanup` for removal
+
+### 18. Empty States
+Port `features/empty/EmptyState.tsx` and `EmptyTab.tsx`.
+
+- [x] `EmptyState` — "No table selected" with database icon (shown when no tabs)
+- [x] `EmptyTab` — "Empty Tab" with keyboard shortcut hints (shown for blank tabs)
+
+---
+
+## Remaining
 
 ### 12. Table Page
 Port `features/table/TablePage.tsx`. The core data browsing view.
@@ -158,12 +167,6 @@ Port `lib/theme.ts`.
 - [ ] Call `initialize_theme()` in `main.rs` before mount
 - [ ] Add solar-dusk and nature theme CSS variables to `style.css` (currently only amethyst-haze)
 
-### 18. Empty States
-Port `features/empty/EmptyState.tsx` and `EmptyTab.tsx`.
-
-- [ ] `EmptyState` — "No table selected" with database icon (shown when no tabs)
-- [ ] `EmptyTab` — "Empty Tab" with keyboard shortcut hints (shown for blank tabs)
-
 ### 19. Cleanup
 - [ ] Remove all `[store]` debug console.log statements from `connection_store.rs`
 - [ ] Suppress unused type warnings with `#[allow(dead_code)]` or by actually using them
@@ -192,16 +195,18 @@ src-leptos/
     ├── types.rs              ✅  Shared types mirroring backend
     ├── connection.rs         ✅  Connection page + recents sidebar
     ├── connection_store.rs   ✅  Persisted connection history (plugin-store)
-    ├── db_store.rs           ⬜  Global DB state (tables, indexes, roles, etc.)
+    ├── db_store.rs           ✅  Global DB state (tables, indexes, roles, etc.)
+    ├── tab_store.rs          ✅  Tab state management (open/close/switch)
+    ├── shell.rs              ✅  App shell (sidebar + tabbar + content + keyboard shortcuts)
+    ├── sidebar.rs            ✅  Sidebar component
+    ├── tab_bar.rs            ✅  Tab bar component
+    ├── empty.rs              ✅  EmptyState + EmptyTab components
     ├── theme.rs              ⬜  Theme/mode management (localStorage + classList)
-    ├── sidebar.rs            ⬜  Sidebar component
-    ├── tab_bar.rs            ⬜  Tab bar component
     ├── table_page.rs         ⬜  Table data browser with pagination
     ├── data_table.rs         ⬜  Generic sortable table component
     ├── indexes_page.rs       ⬜  Indexes viewer
     ├── roles_page.rs         ⬜  Roles viewer
-    ├── settings_page.rs      ⬜  Settings (theme picker, about)
-    └── empty.rs              ⬜  EmptyState + EmptyTab components
+    └── settings_page.rs      ⬜  Settings (theme picker, about)
 
 style.css                     ✅  Base styles + amethyst-haze tokens (needs solar-dusk + nature)
 index.html                    ✅  Trunk entry point

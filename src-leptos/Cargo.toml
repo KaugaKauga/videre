@@ -16,8 +16,10 @@ web-sys = { version = "0.3", features = [
     "Event",
     "SubmitEvent",
     "InputEvent",
+    "KeyboardEvent",
     "HtmlInputElement",
     "EventTarget",
+    "Navigator",
     "console",
 ] }
 serde = { version = "1", features = ["derive"] }
