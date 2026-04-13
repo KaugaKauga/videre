@@ -1,0 +1,223 @@
+# Leptos Migration Plan
+
+Migration of Videre's frontend from React/TypeScript to Leptos (Rust/WASM).
+
+The Rust backend (`src-tauri/`) is **untouched** — only the frontend changes.
+
+---
+
+## Completed
+
+### 1. Project Scaffolding
+- [x] Backed up React frontend to `src-react/`
+- [x] Backed up `index.html` → `index-react.html`, `tauri.conf.json` → `tauri.conf.react.json`
+- [x] Created `src-leptos/` crate with `Cargo.toml` (leptos CSR + wasm-bindgen + serde)
+- [x] Created `Trunk.toml` build config
+- [x] Created new `index.html` for Trunk (links to WASM crate + `style.css`)
+- [x] Updated `tauri.conf.json` to use Trunk (`beforeDevCommand`, `beforeBuildCommand`, `withGlobalTauri`)
+- [x] Added `src-leptos/target` and `.trunk` to `.gitignore`
+
+### 2. Tauri IPC Wrapper (`tauri.rs`)
+- [x] Generic `invoke<T>()` — calls `window.__TAURI__.core.invoke` via wasm-bindgen
+- [x] `invoke_void()` variant for commands that return nothing
+- [x] Proper error handling (rejected promises → `Result::Err`)
+
+### 3. Shared Types (`types.rs`)
+- [x] All backend types mirrored: `ConnectionConfig`, `ConnectionResult`, `TableInfo`, `TableData`, `ForeignKeyInfo`, `IndexInfo`, `RoleInfo`, `TablePrivilege`, `RowData`
+- [x] `Serialize` + `Deserialize` derives for serde-wasm-bindgen
+
+### 4. Base Stylesheet (`style.css`)
+- [x] CSS reset
+- [x] Amethyst-haze theme tokens (light + dark) via CSS custom properties
+- [x] Component classes: `.card`, `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.field`, `input`, `label`
+- [x] Status messages: `.status-msg`, `.status-success`, `.status-error`
+- [x] Connection page layout: `.connection-page`, `.connection-card`, `.connection-layout`
+- [x] Recents sidebar: `.recents`, `.recent-item`, `.recent-delete`
+- [x] Spinner animation
+
+### 5. Connection Page (`connection.rs`)
+- [x] Form with host / port / database / username / password (reactive signals)
+- [x] Test Connection button with loading spinner
+- [x] Connect button with loading spinner
+- [x] Success / error status messages with icons
+- [x] Calls backend via `tauri::invoke`
+
+### 6. Connection Store (`connection_store.rs`)
+- [x] `SavedConnection` struct with `#[serde(rename_all = "camelCase")]` (backward-compatible with React's stored JSON)
+- [x] Tauri plugin-store IPC: `plugin:store|load`, `plugin:store|get`, `plugin:store|set`, `plugin:store|save`
+- [x] Cached resource ID via `thread_local!` (only calls `load` once per session)
+- [x] `ConnectionStore` with `RwSignal`s provided via Leptos context
+- [x] `init()` — async load from disk on startup
+- [x] `save_connection()` — dedup, bump to top, truncate to 10, persist
+- [x] `remove_connection()` — remove by ID, persist
+- [x] Recents sidebar in ConnectionPage — click to fill form, trash to delete
+- [x] Added `store:allow-load` permission to Tauri capabilities
+
+---
+
+## Remaining
+
+### 7. Database Store (equivalent of `dbStore.ts`)
+The global reactive state that tracks connection status and all fetched metadata.
+
+- [ ] Create `db_store.rs`
+- [ ] Signals: `is_connected`, `tables`, `foreign_keys`, `indexes`, `roles`, `table_privileges`, `is_loading`, `error`
+- [ ] `fetch_database_metadata()` — calls `get_tables`, `get_foreign_keys`, `get_indexes`, `get_roles`, `get_table_privileges` in parallel
+- [ ] `disconnect()` — calls `disconnect_db`, resets all state
+- [ ] Lookup helpers: `get_foreign_keys_for_table()`, `get_indexes_for_table()`, `get_privileges_for_role()`
+- [ ] Provide via context alongside `ConnectionStore`
+- [ ] Wire into ConnectionPage — on successful connect, set connected + fetch metadata
+
+### 8. App Shell — Sidebar
+Port `features/shell/Sidebar.tsx`. A collapsible sidebar showing:
+
+- [ ] App header ("Videre" + database icon)
+- [ ] Tables list (from `DbStore.tables`) — click opens a table tab
+- [ ] Loading spinner when fetching metadata
+- [ ] "Not connected" / "No tables found" empty states
+- [ ] Bottom section: Indexes, Roles links
+- [ ] Footer: Connection, Settings links
+- [ ] Style the sidebar using existing `--sidebar-*` CSS variables
+
+### 9. App Shell — Tab Bar
+Port `features/shell/TabBar.tsx`. A horizontal tab strip:
+
+- [ ] Tab types: `table`, `empty`, `settings`, `connection`, `indexes`, `roles`
+- [ ] Active tab indicator (bottom border)
+- [ ] Close button per tab (X icon, visible on hover)
+- [ ] Click to switch tabs
+
+### 10. App Shell — Tab State & Routing
+Port the tab management logic from `App.tsx`. No router — tabs are managed via signals.
+
+- [ ] `tabs: RwSignal<Vec<Tab>>` and `active_tab_id: RwSignal<Option<String>>`
+- [ ] `open_table_tab()` — reuse existing or replace empty tab
+- [ ] `open_singleton_tab()` — for settings, connection, indexes, roles (only one instance)
+- [ ] `open_empty_tab()` — "Untitled N" naming
+- [ ] `close_tab()` — activate adjacent tab on close
+- [ ] Content area renders the active tab's component
+
+### 11. Keyboard Shortcuts
+Port `hooks/useKeyboardShortcuts.ts`.
+
+- [ ] `Cmd/Ctrl + T` — new empty tab
+- [ ] `Cmd/Ctrl + W` — close active tab
+- [ ] `Cmd/Ctrl + 1-9` — switch to tab by index
+- [ ] Platform detection (Mac → Meta key, others → Ctrl)
+- [ ] Use `web_sys` keydown event listener + `Effect` for cleanup
+
+### 12. Table Page
+Port `features/table/TablePage.tsx`. The core data browsing view.
+
+- [ ] Fetch table data on mount via `get_table_data` (with limit/offset)
+- [ ] Column headers with sort toggle (client-side sort via `DataTable` logic)
+- [ ] Pagination controls (prev/next, page indicator, total rows)
+- [ ] Foreign key display for the table
+- [ ] Loading / error states
+- [ ] Style: data table with sticky header, horizontal scroll
+
+### 13. DataTable Component
+Port `components/DataTable.tsx`. Generic sortable table.
+
+- [ ] Column definitions: header renderer, cell renderer, accessor
+- [ ] Client-side sorting (asc → desc → none)
+- [ ] Sort indicator icon in headers
+- [ ] "No results" empty state
+- [ ] CSS for `.data-table` — sticky header, striped rows, proper cell padding
+
+### 14. Indexes Page
+Port `features/indexes/IndexesPage.tsx`.
+
+- [ ] Read indexes from `DbStore`
+- [ ] Display in a table: index name, table, columns, unique, primary, type, size
+- [ ] Reuse `DataTable` component
+
+### 15. Roles Page
+Port `features/roles/RolesPage.tsx`.
+
+- [ ] Read roles + privileges from `DbStore`
+- [ ] Roles table: role name, superuser, can_login, create_db, create_role, connection_limit, valid_until
+- [ ] Expandable privileges per role
+- [ ] Reuse `DataTable` component
+
+### 16. Settings Page
+Port `features/settings/SettingsPage.tsx`.
+
+- [ ] Theme selection: amethyst-haze, solar-dusk, nature (with color preview swatches)
+- [ ] Mode selection: light / dark (with sun/moon icons)
+- [ ] About section (version, app name)
+- [ ] Persists to localStorage
+- [ ] Applies theme by toggling CSS classes on `<html>`
+
+### 17. Theme System
+Port `lib/theme.ts`.
+
+- [ ] Create `theme.rs` with `apply_theme()`, `get_stored_theme()`, `set_stored_theme()`, etc.
+- [ ] Read/write localStorage via `web_sys::Storage`
+- [ ] Manipulate `document.documentElement.classList` via `web_sys`
+- [ ] Call `initialize_theme()` in `main.rs` before mount
+- [ ] Add solar-dusk and nature theme CSS variables to `style.css` (currently only amethyst-haze)
+
+### 18. Empty States
+Port `features/empty/EmptyState.tsx` and `EmptyTab.tsx`.
+
+- [ ] `EmptyState` — "No table selected" with database icon (shown when no tabs)
+- [ ] `EmptyTab` — "Empty Tab" with keyboard shortcut hints (shown for blank tabs)
+
+### 19. Cleanup
+- [ ] Remove all `[store]` debug console.log statements from `connection_store.rs`
+- [ ] Suppress unused type warnings with `#[allow(dead_code)]` or by actually using them
+- [ ] Review and tighten `web-sys` feature flags
+- [ ] Consider extracting SVG icons into a shared `icons.rs` module to reduce duplication
+
+### 20. Final Validation
+- [ ] Verify all Tauri IPC commands work: `test_connection`, `connect_to_db`, `get_tables`, `get_table_data`, `get_foreign_keys`, `get_indexes`, `get_roles`, `get_table_privileges`, `get_row_by_pk`, `disconnect_db`
+- [ ] Verify plugin-store persistence survives app restart
+- [ ] Test all three themes in both light and dark mode
+- [ ] Test keyboard shortcuts
+- [ ] Test pagination on large tables
+- [ ] Test with no database connection (graceful empty states)
+- [ ] Compare visual output with React version for parity
+
+---
+
+## File Map
+
+```
+src-leptos/
+├── Cargo.toml
+└── src/
+    ├── main.rs               ✅  Entry point, mounts App, provides context
+    ├── tauri.rs              ✅  IPC wrapper (invoke, invoke_void)
+    ├── types.rs              ✅  Shared types mirroring backend
+    ├── connection.rs         ✅  Connection page + recents sidebar
+    ├── connection_store.rs   ✅  Persisted connection history (plugin-store)
+    ├── db_store.rs           ⬜  Global DB state (tables, indexes, roles, etc.)
+    ├── theme.rs              ⬜  Theme/mode management (localStorage + classList)
+    ├── sidebar.rs            ⬜  Sidebar component
+    ├── tab_bar.rs            ⬜  Tab bar component
+    ├── table_page.rs         ⬜  Table data browser with pagination
+    ├── data_table.rs         ⬜  Generic sortable table component
+    ├── indexes_page.rs       ⬜  Indexes viewer
+    ├── roles_page.rs         ⬜  Roles viewer
+    ├── settings_page.rs      ⬜  Settings (theme picker, about)
+    └── empty.rs              ⬜  EmptyState + EmptyTab components
+
+style.css                     ✅  Base styles + amethyst-haze tokens (needs solar-dusk + nature)
+index.html                    ✅  Trunk entry point
+Trunk.toml                    ✅  Build config
+
+src-react/                    📦  Backup of original React frontend (do not delete yet)
+index-react.html              📦  Backup of original index.html
+src-tauri/tauri.conf.react.json 📦  Backup of original Tauri config
+```
+
+## Rollback
+
+To switch back to the React frontend:
+
+```sh
+cp src-tauri/tauri.conf.react.json src-tauri/tauri.conf.json
+cp index-react.html index.html
+bun run tauri dev
+```

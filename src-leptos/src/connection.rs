@@ -3,6 +3,7 @@ use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
 
 use crate::connection_store::ConnectionStore;
+use crate::db_store::DbStore;
 use crate::tauri;
 use crate::types::{ConnectionConfig, ConnectionResult};
 
@@ -17,8 +18,8 @@ enum Status {
 
 #[component]
 pub fn ConnectionPage() -> impl IntoView {
-    let conn_store =
-        use_context::<ConnectionStore>().expect("ConnectionStore not provided");
+    let conn_store = use_context::<ConnectionStore>().expect("ConnectionStore not provided");
+    let db_store = use_context::<DbStore>().expect("DbStore not provided");
 
     let (host, set_host) = signal("localhost".to_string());
     let (port, set_port) = signal("5432".to_string());
@@ -27,9 +28,8 @@ pub fn ConnectionPage() -> impl IntoView {
     let (password, set_password) = signal(String::new());
     let (status, set_status) = signal(Status::Idle);
 
-    let is_loading = Memo::new(move |_| {
-        matches!(status.get(), Status::Testing | Status::Connecting)
-    });
+    let is_loading =
+        Memo::new(move |_| matches!(status.get(), Status::Testing | Status::Connecting));
 
     let build_config = move || ConnectionConfig {
         host: host.get(),
@@ -81,6 +81,7 @@ pub fn ConnectionPage() -> impl IntoView {
                         config.database.clone(),
                         config.username.clone(),
                     );
+                    db_store.fetch_database_metadata();
                 }
                 Ok(result) => {
                     set_status.set(Status::Error(result.message));
