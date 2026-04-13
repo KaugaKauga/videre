@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Leptos / Trunk
+src-leptos/target
+.trunk
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
