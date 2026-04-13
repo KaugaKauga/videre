@@ -818,3 +818,273 @@ kbd {
     background: var(--background);
     font-size: 0.875rem;
 }
+
+/* ===================================================================
+   Data Table
+   =================================================================== */
+
+.data-table-wrap {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.data-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.data-table-th {
+    padding: 0.5rem 1rem;
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+}
+
+.data-table-th:hover {
+    color: var(--foreground);
+}
+
+.data-table-th-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.sort-indicator {
+    font-size: 0.5rem;
+    color: var(--foreground);
+}
+
+.sort-inactive {
+    opacity: 0;
+}
+
+.data-table-th:hover .sort-inactive {
+    opacity: 0.3;
+}
+
+.fk-badge {
+    font-size: 0.625rem;
+    color: var(--primary);
+}
+
+.data-table-row {
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.08s ease;
+}
+
+.data-table-row:hover {
+    background: oklch(from var(--muted) l c h / 0.4);
+}
+
+.data-table-td {
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+    color: var(--foreground);
+    max-width: 20rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.data-table-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--muted-foreground);
+}
+
+.null-value {
+    color: var(--muted-foreground);
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.fk-link {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+}
+
+.fk-link:hover {
+    text-decoration: underline;
+    opacity: 0.85;
+}
+
+.json-value {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    background: var(--muted);
+    padding: 0.125rem 0.375rem;
+    border-radius: calc(var(--radius) - 2px);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ===================================================================
+   Table Page
+   =================================================================== */
+
+.table-page {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;       /* for the FK side panel */
+}
+
+.table-page-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.table-page-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.table-page-body {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+    padding: 0;
+}
+
+.table-page-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid var(--border);
+    background: var(--background);
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    height: 1.75rem;
+    padding: 0 0.625rem;
+    font-size: 0.75rem;
+}
+
+.table-page-loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--muted-foreground);
+    padding: 2rem;
+}
+
+.table-page-error {
+    margin: 1.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    background: var(--error-bg);
+    color: var(--error);
+    font-size: 0.8125rem;
+}
+
+/* ===================================================================
+   FK Row Detail Side Panel
+   =================================================================== */
+
+.row-detail-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 24rem;
+    height: 100%;
+    background: var(--card);
+    border-left: 1px solid var(--border);
+    box-shadow: -4px 0 16px oklch(0 0 0 / 0.08);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    overflow: hidden;
+}
+
+.row-detail-panel.open {
+    transform: translateX(0);
+}
+
+.row-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem 0.25rem;
+}
+
+.row-detail-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.row-detail-subtitle {
+    padding: 0 1.25rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.row-detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+}
+
+.row-detail-field {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.375rem 0;
+}
+
+.row-detail-field + .row-detail-field {
+    border-top: 1px solid oklch(from var(--border) l c h / 0.4);
+}
+
+.row-detail-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    min-width: 7.5rem;
+    flex-shrink: 0;
+}
+
+.row-detail-value {
+    font-size: 0.8125rem;
+    color: var(--foreground);
+    word-break: break-all;
+}

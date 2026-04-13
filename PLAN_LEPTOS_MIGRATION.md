@@ -118,21 +118,23 @@ Port `features/empty/EmptyState.tsx` and `EmptyTab.tsx`.
 ### 12. Table Page
 Port `features/table/TablePage.tsx`. The core data browsing view.
 
-- [ ] Fetch table data on mount via `get_table_data` (with limit/offset)
-- [ ] Column headers with sort toggle (client-side sort via `DataTable` logic)
-- [ ] Pagination controls (prev/next, page indicator, total rows)
-- [ ] Foreign key display for the table
-- [ ] Loading / error states
-- [ ] Style: data table with sticky header, horizontal scroll
+- [x] Fetch table data on mount via `get_table_data` (with limit/offset)
+- [x] Column headers with sort toggle (client-side sort via `DataTable` logic)
+- [x] Pagination controls (prev/next, page indicator, total rows)
+- [x] Foreign key display for the table (FK badge in headers, clickable FK cells)
+- [x] FK detail side panel — slide-out panel fetches referenced row via `get_row_by_pk`
+- [x] Loading / error states
+- [x] Style: data table with sticky header, horizontal scroll
 
 ### 13. DataTable Component
 Port `components/DataTable.tsx`. Generic sortable table.
 
-- [ ] Column definitions: header renderer, cell renderer, accessor
-- [ ] Client-side sorting (asc → desc → none)
-- [ ] Sort indicator icon in headers
-- [ ] "No results" empty state
-- [ ] CSS for `.data-table` — sticky header, striped rows, proper cell padding
+- [x] Column definitions from `Vec<String>`, rows from `Vec<Vec<serde_json::Value>>`
+- [x] Client-side sorting (asc → desc → none) with `compare_values` supporting null/number/string/bool
+- [x] Sort indicator arrows in headers (▲/▼), inactive indicator on hover
+- [x] "No results" empty state
+- [x] Optional FK support via `fk_columns` + `fk_click` signal props
+- [x] CSS for `.data-table` — sticky header, hover rows, proper cell padding
 
 ### 14. Indexes Page
 Port `features/indexes/IndexesPage.tsx`.
@@ -201,9 +203,9 @@ src-leptos/
     ├── sidebar.rs            ✅  Sidebar component
     ├── tab_bar.rs            ✅  Tab bar component
     ├── empty.rs              ✅  EmptyState + EmptyTab components
+    ├── table_page.rs         ✅  Table data browser with pagination + FK side panel
+    ├── data_table.rs         ✅  Generic sortable table component with FK support
     ├── theme.rs              ⬜  Theme/mode management (localStorage + classList)
-    ├── table_page.rs         ⬜  Table data browser with pagination
-    ├── data_table.rs         ⬜  Generic sortable table component
     ├── indexes_page.rs       ⬜  Indexes viewer
     ├── roles_page.rs         ⬜  Roles viewer
     └── settings_page.rs      ⬜  Settings (theme picker, about)

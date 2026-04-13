@@ -1,11 +1,13 @@
 mod connection;
 mod connection_store;
+mod data_table;
 mod db_store;
 mod empty;
 mod shell;
 mod sidebar;
 mod tab_bar;
 mod tab_store;
+mod table_page;
 mod tauri;
 mod types;
 

@@ -7,6 +7,7 @@ use crate::empty::{EmptyState, EmptyTab};
 use crate::sidebar::Sidebar;
 use crate::tab_bar::TabBar;
 use crate::tab_store::{TabStore, TabType};
+use crate::table_page::TablePage;
 
 /// Main application shell shown after a successful DB connection.
 ///
@@ -40,11 +41,10 @@ pub fn Shell() -> impl IntoView {
                                     view! { <ConnectionPage /> }.into_any()
                                 }
                                 TabType::Table { name, schema } => {
-                                    let label = format!("{}.{}", schema, name);
+                                    let n = name.clone();
+                                    let s = schema.clone();
                                     view! {
-                                        <div class="placeholder-page">
-                                            <span class="text-muted">{label}</span>
-                                        </div>
+                                        <TablePage name=n schema=s />
                                     }.into_any()
                                 }
                                 TabType::Settings => {
