@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
 
+use crate::connection_store::ConnectionStore;
 use crate::tauri;
 use crate::types::{ConnectionConfig, ConnectionResult};
 
@@ -16,6 +17,9 @@ enum Status {
 
 #[component]
 pub fn ConnectionPage() -> impl IntoView {
+    let conn_store =
+        use_context::<ConnectionStore>().expect("ConnectionStore not provided");
+
     let (host, set_host) = signal("localhost".to_string());
     let (port, set_port) = signal("5432".to_string());
     let (database, set_database) = signal(String::new());
@@ -71,6 +75,12 @@ pub fn ConnectionPage() -> impl IntoView {
             {
                 Ok(result) if result.success => {
                     set_status.set(Status::Success(result.message));
+                    conn_store.save_connection(
+                        config.host.clone(),
+                        config.port.clone(),
+                        config.database.clone(),
+                        config.username.clone(),
+                    );
                 }
                 Ok(result) => {
                     set_status.set(Status::Error(result.message));
@@ -91,147 +101,145 @@ pub fn ConnectionPage() -> impl IntoView {
 
     view! {
         <div class="connection-page">
-            <div class="connection-card card">
-                <div class="card-header">
-                    <div class="connection-title-row">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                             viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M12 6m-8 0a8 3 0 1 0 16 0a8 3 0 1 0 -16 0"/>
-                            <path d="M4 6v6a8 3 0 0 0 16 0v-6"/>
-                            <path d="M4 12v6a8 3 0 0 0 16 0v-6"/>
-                        </svg>
-                        <h1>"Connect to PostgreSQL"</h1>
-                    </div>
-                    <p class="card-description">
-                        "Enter your database connection details to get started"
-                    </p>
-                </div>
+            <div class="connection-layout">
 
-                <div class="card-content">
-                    <form on:submit=on_connect>
-                        <div class="field">
-                            <label for="host">"Host"</label>
-                            <input type="text" id="host" placeholder="localhost"
-                                   prop:value=host
-                                   on:input=move |ev| set_host.set(val(ev.into()))
-                                   required />
-                        </div>
+                /* Recents sidebar */
+                {move || {
+                    let conns = conn_store.connections.get();
+                    let loaded = conn_store.is_loaded.get();
 
-                        <div class="field">
-                            <label for="port">"Port"</label>
-                            <input type="text" id="port" placeholder="5432"
-                                   prop:value=port
-                                   on:input=move |ev| set_port.set(val(ev.into()))
-                                   required />
-                        </div>
-
-                        <div class="field">
-                            <label for="database">"Database"</label>
-                            <input type="text" id="database" placeholder="my_database"
-                                   prop:value=database
-                                   on:input=move |ev| set_database.set(val(ev.into()))
-                                   required />
-                        </div>
-
-                        <div class="field">
-                            <label for="username">"Username"</label>
-                            <input type="text" id="username" placeholder="postgres"
-                                   prop:value=username
-                                   on:input=move |ev| set_username.set(val(ev.into()))
-                                   required />
-                        </div>
-
-                        <div class="field">
-                            <label for="password">"Password"</label>
-                            <input type="password" id="password" placeholder="Enter your password"
-                                   prop:value=password
-                                   on:input=move |ev| set_password.set(val(ev.into()))
-                                   required />
-                        </div>
-
-                        {move || {
-                            let s = status.get();
-                            match s {
-                                Status::Success(ref msg) => Some(view! {
-                                    <div class="status-msg status-success">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                             viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    if loaded && !conns.is_empty() {
+                        let items: Vec<_> = conns.iter().map(|conn| {
+                            let c_host = conn.host.clone();
+                            let c_port = conn.port.clone();
+                            let c_db = conn.database.clone();
+                            let c_user = conn.username.clone();
+                            let c_id = conn.id.clone();
+                            let label = conn.database.clone();
+                            view! {
+                                <div class="recent-item">
+                                    <button class="btn btn-ghost"
+                                        on:click=move |_| {
+                                            set_host.set(c_host.clone());
+                                            set_port.set(c_port.clone());
+                                            set_database.set(c_db.clone());
+                                            set_username.set(c_user.clone());
+                                            set_password.set(String::new());
+                                            set_status.set(Status::Idle);
+                                        }
+                                    >{label}</button>
+                                    <button class="recent-delete" title="Remove"
+                                        on:click={
+                                            let id = c_id.clone();
+                                            move |_| conn_store.remove_connection(id.clone())
+                                        }
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/>
-                                            <path d="M9 12l2 2l4 -4"/>
+                                            <path d="M4 7l16 0"/>
+                                            <path d="M10 11l0 6"/>
+                                            <path d="M14 11l0 6"/>
+                                            <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/>
+                                            <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/>
                                         </svg>
-                                        <span>{msg.clone()}</span>
-                                    </div>
-                                }.into_any()),
-                                Status::Error(ref msg) => Some(view! {
-                                    <div class="status-msg status-error">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                             viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/>
-                                            <path d="M10 10l4 4m0 -4l-4 4"/>
-                                        </svg>
-                                        <span>{msg.clone()}</span>
-                                    </div>
-                                }.into_any()),
-                                _ => None,
+                                    </button>
+                                </div>
                             }
-                        }}
+                        }).collect();
+                        view! {
+                            <div class="recents">
+                                <h3 class="recents-heading">"Recents"</h3>
+                                {items}
+                            </div>
+                        }.into_any()
+                    } else {
+                        view! { <div style="display:none"/> }.into_any()
+                    }
+                }}
 
-                        <div class="connection-actions">
-                            <button type="button" class="btn btn-secondary"
-                                    on:click=on_test disabled=is_loading>
-                                {move || match status.get() {
-                                    Status::Testing => view! {
-                                        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg"
-                                             width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                             stroke="currentColor" stroke-width="2"
-                                             stroke-linecap="round" stroke-linejoin="round">
-                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 6l0 -3"/>
-                                            <path d="M16.25 7.75l2.15 -2.15"/>
-                                            <path d="M18 12l3 0"/>
-                                            <path d="M16.25 16.25l2.15 2.15"/>
-                                            <path d="M12 18l0 3"/>
-                                            <path d="M7.75 16.25l-2.15 2.15"/>
-                                            <path d="M6 12l-3 0"/>
-                                            <path d="M7.75 7.75l-2.15 -2.15"/>
-                                        </svg>
-                                    }.into_any(),
-                                    _ => view! { <span /> }.into_any(),
-                                }}
-                                "Test"
-                            </button>
-                            <button type="submit" class="btn btn-primary"
-                                    disabled=is_loading>
-                                {move || match status.get() {
-                                    Status::Connecting => view! {
-                                        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg"
-                                             width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                             stroke="currentColor" stroke-width="2"
-                                             stroke-linecap="round" stroke-linejoin="round">
-                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 6l0 -3"/>
-                                            <path d="M16.25 7.75l2.15 -2.15"/>
-                                            <path d="M18 12l3 0"/>
-                                            <path d="M16.25 16.25l2.15 2.15"/>
-                                            <path d="M12 18l0 3"/>
-                                            <path d="M7.75 16.25l-2.15 2.15"/>
-                                            <path d="M6 12l-3 0"/>
-                                            <path d="M7.75 7.75l-2.15 -2.15"/>
-                                        </svg>
-                                    }.into_any(),
-                                    _ => view! { <span /> }.into_any(),
-                                }}
-                                "Connect"
-                            </button>
+                /* Connection form card */
+                <div class="connection-card card">
+                    <div class="card-header">
+                        <div class="connection-title-row">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M12 6m-8 0a8 3 0 1 0 16 0a8 3 0 1 0 -16 0"/>
+                                <path d="M4 6v6a8 3 0 0 0 16 0v-6"/>
+                                <path d="M4 12v6a8 3 0 0 0 16 0v-6"/>
+                            </svg>
+                            <h1>"Connect to PostgreSQL"</h1>
                         </div>
-                    </form>
+                        <p class="card-description">"Enter your database connection details to get started"</p>
+                    </div>
+
+                    <div class="card-content">
+                        <form on:submit=on_connect>
+                            <div class="field">
+                                <label for="host">"Host"</label>
+                                <input type="text" id="host" placeholder="localhost" prop:value=host on:input=move |ev| set_host.set(val(ev.into())) required />
+                            </div>
+                            <div class="field">
+                                <label for="port">"Port"</label>
+                                <input type="text" id="port" placeholder="5432" prop:value=port on:input=move |ev| set_port.set(val(ev.into())) required />
+                            </div>
+                            <div class="field">
+                                <label for="database">"Database"</label>
+                                <input type="text" id="database" placeholder="my_database" prop:value=database on:input=move |ev| set_database.set(val(ev.into())) required />
+                            </div>
+                            <div class="field">
+                                <label for="username">"Username"</label>
+                                <input type="text" id="username" placeholder="postgres" prop:value=username on:input=move |ev| set_username.set(val(ev.into())) required />
+                            </div>
+                            <div class="field">
+                                <label for="password">"Password"</label>
+                                <input type="password" id="password" placeholder="Enter your password" prop:value=password on:input=move |ev| set_password.set(val(ev.into())) required />
+                            </div>
+
+                            {move || {
+                                let s = status.get();
+                                match s {
+                                    Status::Success(ref msg) => Some(view! {
+                                        <div class="status-msg status-success">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/>
+                                                <path d="M9 12l2 2l4 -4"/>
+                                            </svg>
+                                            <span>{msg.clone()}</span>
+                                        </div>
+                                    }.into_any()),
+                                    Status::Error(ref msg) => Some(view! {
+                                        <div class="status-msg status-error">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/>
+                                                <path d="M10 10l4 4m0 -4l-4 4"/>
+                                            </svg>
+                                            <span>{msg.clone()}</span>
+                                        </div>
+                                    }.into_any()),
+                                    _ => None,
+                                }
+                            }}
+
+                            <div class="connection-actions">
+                                <button type="button" class="btn btn-secondary" on:click=on_test disabled=is_loading>
+                                    {move || if matches!(status.get(), Status::Testing) {
+                                        view! { <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 6l0 -3"/><path d="M16.25 7.75l2.15 -2.15"/><path d="M18 12l3 0"/><path d="M16.25 16.25l2.15 2.15"/><path d="M12 18l0 3"/><path d="M7.75 16.25l-2.15 2.15"/><path d="M6 12l-3 0"/><path d="M7.75 7.75l-2.15 -2.15"/></svg> }.into_any()
+                                    } else { view! { <span/> }.into_any() }}
+                                    "Test"
+                                </button>
+                                <button type="submit" class="btn btn-primary" disabled=is_loading>
+                                    {move || if matches!(status.get(), Status::Connecting) {
+                                        view! { <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 6l0 -3"/><path d="M16.25 7.75l2.15 -2.15"/><path d="M18 12l3 0"/><path d="M16.25 16.25l2.15 2.15"/><path d="M12 18l0 3"/><path d="M7.75 16.25l-2.15 2.15"/><path d="M6 12l-3 0"/><path d="M7.75 7.75l-2.15 -2.15"/></svg> }.into_any()
+                                    } else { view! { <span/> }.into_any() }}
+                                    "Connect"
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
+
             </div>
         </div>
     }
