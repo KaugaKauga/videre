@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use leptos::prelude::*;
 
 use crate::db_store::DbStore;
+use crate::drawer::Drawer;
 use crate::types::{RoleInfo, TablePrivilege};
 
 // ---------------------------------------------------------------------------
@@ -260,6 +261,7 @@ pub fn RolesPage() -> impl IntoView {
 
     // Side panel state
     let panel_open = RwSignal::new(false);
+    let panel_title = RwSignal::new(String::new());
     let selected_role = RwSignal::new(None::<String>);
 
     if roles.is_empty() {
@@ -309,6 +311,7 @@ pub fn RolesPage() -> impl IntoView {
             });
             let rn = role.role_name.clone();
             render_role_row(role, &summary, true, move || {
+                panel_title.set(rn.clone());
                 selected_role.set(Some(rn.clone()));
                 panel_open.set(true);
             })
@@ -325,6 +328,7 @@ pub fn RolesPage() -> impl IntoView {
             });
             let rn = role.role_name.clone();
             render_role_row(role, &summary, false, move || {
+                panel_title.set(rn.clone());
                 selected_role.set(Some(rn.clone()));
                 panel_open.set(true);
             })
@@ -405,29 +409,14 @@ pub fn RolesPage() -> impl IntoView {
             </div>
 
             // Role detail side panel
-            <div
-                class=move || if panel_open.get() { "row-detail-backdrop open" } else { "row-detail-backdrop" }
-                on:click=move |_| panel_open.set(false)
-            />
-            <div class=move || {
-                if panel_open.get() { "row-detail-panel open" } else { "row-detail-panel" }
-            }>
-                <div class="row-detail-header">
-                    <h3 class="mono">{move || selected_role.get().unwrap_or_default()}</h3>
-                    <button class="btn btn-ghost btn-sm" on:click=move |_| panel_open.set(false)>
-                        "\u{2715}"
-                    </button>
-                </div>
-                <p class="text-muted text-sm row-detail-subtitle">"Role details and permissions"</p>
-                <div class="row-detail-body">
-                    {move || {
-                        let sel = selected_role.get()?;
-                        let role = all_roles.iter().find(|r| r.role_name == sel)?.clone();
-                        let privs = db.get_privileges_for_role(&sel);
-                        Some(view! { <RoleDetailPanel role=role privileges=privs /> })
-                    }}
-                </div>
-            </div>
+            <Drawer open=panel_open title=panel_title subtitle="Role details and permissions">
+                {move || {
+                    let sel = selected_role.get()?;
+                    let role = all_roles.iter().find(|r| r.role_name == sel)?.clone();
+                    let privs = db.get_privileges_for_role(&sel);
+                    Some(view! { <RoleDetailPanel role=role privileges=privs /> })
+                }}
+            </Drawer>
         </div>
     }
     .into_any()

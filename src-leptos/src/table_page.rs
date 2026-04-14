@@ -5,6 +5,7 @@ use leptos::task::spawn_local;
 
 use crate::data_table::DataTable;
 use crate::db_store::DbStore;
+use crate::drawer::Drawer;
 use crate::tauri;
 use crate::types::{ForeignKeyInfo, RowData, TableData};
 
@@ -269,86 +270,69 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
             }}
 
             // FK detail side panel
-            <div
-                class=move || if panel_open.get() { "row-detail-backdrop open" } else { "row-detail-backdrop" }
-                on:click=move |_| panel_open.set(false)
-            />
-            <div class=move || {
-                if panel_open.get() { "row-detail-panel open" } else { "row-detail-panel" }
-            }>
-                <div class="row-detail-header">
-                    <h3>{move || panel_title.get()}</h3>
-                    <button class="btn btn-ghost btn-sm"
-                        on:click=move |_| panel_open.set(false)
-                    >
-                        "\u{2715}"
-                    </button>
-                </div>
-                <p class="text-muted text-sm row-detail-subtitle">"Referenced row details"</p>
-                <div class="row-detail-body">
-                    {move || {
-                        if panel_loading.get() {
-                            return view! {
-                                <div class="table-page-loading">
-                                    <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg"
-                                         width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                         stroke="currentColor" stroke-width="2"
-                                         stroke-linecap="round" stroke-linejoin="round">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                        <path d="M12 6l0 -3"/>
-                                        <path d="M16.25 7.75l2.15 -2.15"/>
-                                        <path d="M18 12l3 0"/>
-                                        <path d="M16.25 16.25l2.15 2.15"/>
-                                        <path d="M12 18l0 3"/>
-                                        <path d="M7.75 16.25l-2.15 2.15"/>
-                                        <path d="M6 12l-3 0"/>
-                                        <path d="M7.75 7.75l-2.15 -2.15"/>
-                                    </svg>
-                                    <span>"Loading\u{2026}"</span>
-                                </div>
-                            }.into_any();
-                        }
+            <Drawer open=panel_open title=panel_title subtitle="Referenced row details">
+                {move || {
+                    if panel_loading.get() {
+                        return view! {
+                            <div class="table-page-loading">
+                                <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg"
+                                     width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 6l0 -3"/>
+                                    <path d="M16.25 7.75l2.15 -2.15"/>
+                                    <path d="M18 12l3 0"/>
+                                    <path d="M16.25 16.25l2.15 2.15"/>
+                                    <path d="M12 18l0 3"/>
+                                    <path d="M7.75 16.25l-2.15 2.15"/>
+                                    <path d="M6 12l-3 0"/>
+                                    <path d="M7.75 7.75l-2.15 -2.15"/>
+                                </svg>
+                                <span>"Loading\u{2026}"</span>
+                            </div>
+                        }.into_any();
+                    }
 
-                        if let Some(ref err) = panel_error.get() {
-                            return view! {
-                                <div class="table-page-error"><p>{err.clone()}</p></div>
-                            }.into_any();
-                        }
+                    if let Some(ref err) = panel_error.get() {
+                        return view! {
+                            <div class="table-page-error"><p>{err.clone()}</p></div>
+                        }.into_any();
+                    }
 
-                        match panel_data.get() {
-                            Some(row) => {
-                                let pairs: Vec<_> = row.columns.iter().zip(row.values.iter())
-                                    .map(|(col, val)| {
-                                        let display = if val.is_null() {
-                                            view! { <span class="null-value">"NULL"</span> }.into_any()
-                                        } else if val.is_object() || val.is_array() {
-                                            let json = serde_json::to_string_pretty(val)
-                                                .unwrap_or_else(|_| val.to_string());
-                                            view! { <code class="json-value">{json}</code> }.into_any()
-                                        } else {
-                                            let s = match val {
-                                                serde_json::Value::String(s) => s.clone(),
-                                                other => other.to_string(),
-                                            };
-                                            view! { <span>{s}</span> }.into_any()
+                    match panel_data.get() {
+                        Some(row) => {
+                            let pairs: Vec<_> = row.columns.iter().zip(row.values.iter())
+                                .map(|(col, val)| {
+                                    let display = if val.is_null() {
+                                        view! { <span class="null-value">"NULL"</span> }.into_any()
+                                    } else if val.is_object() || val.is_array() {
+                                        let json = serde_json::to_string_pretty(val)
+                                            .unwrap_or_else(|_| val.to_string());
+                                        view! { <code class="json-value">{json}</code> }.into_any()
+                                    } else {
+                                        let s = match val {
+                                            serde_json::Value::String(s) => s.clone(),
+                                            other => other.to_string(),
                                         };
-                                        view! {
-                                            <div class="row-detail-field">
-                                                <span class="row-detail-label">{col.clone()}</span>
-                                                <span class="row-detail-value">{display}</span>
-                                            </div>
-                                        }
-                                    })
-                                    .collect();
-                                view! { <div>{pairs}</div> }.into_any()
-                            }
-                            None => view! {
-                                <p class="text-muted text-sm">"No data to display"</p>
-                            }.into_any(),
+                                        view! { <span>{s}</span> }.into_any()
+                                    };
+                                    view! {
+                                        <div class="row-detail-field">
+                                            <span class="row-detail-label">{col.clone()}</span>
+                                            <span class="row-detail-value">{display}</span>
+                                        </div>
+                                    }
+                                })
+                                .collect();
+                            view! { <div>{pairs}</div> }.into_any()
                         }
-                    }}
-                </div>
-            </div>
+                        None => view! {
+                            <p class="text-muted text-sm">"No data to display"</p>
+                        }.into_any(),
+                    }
+                }}
+            </Drawer>
         </div>
     }
 }
