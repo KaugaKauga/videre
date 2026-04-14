@@ -6,12 +6,14 @@ mod drawer;
 mod indexes_page;
 mod empty;
 mod roles_page;
+mod settings_page;
 mod shell;
 mod sidebar;
 mod tab_bar;
 mod tab_store;
 mod table_page;
 mod tauri;
+mod theme;
 mod types;
 
 use connection::ConnectionPage;
@@ -21,6 +23,7 @@ use leptos::prelude::*;
 use shell::Shell;
 
 fn main() {
+    theme::initialize_theme();
     leptos::mount::mount_to_body(App);
 }
 

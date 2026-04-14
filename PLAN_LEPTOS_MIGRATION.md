@@ -157,20 +157,20 @@ Port `features/roles/RolesPage.tsx`.
 ### 16. Settings Page
 Port `features/settings/SettingsPage.tsx`.
 
-- [ ] Theme selection: amethyst-haze, solar-dusk, nature (with color preview swatches)
-- [ ] Mode selection: light / dark (with sun/moon icons)
-- [ ] About section (version, app name)
-- [ ] Persists to localStorage
-- [ ] Applies theme by toggling CSS classes on `<html>`
+- [x] Theme selection: amethyst-haze, solar-dusk, nature (with color preview swatches)
+- [x] Mode selection: light / dark (with sun/moon icons)
+- [x] About section (version, app name)
+- [x] Persists to localStorage
+- [x] Applies theme by toggling CSS classes on `<html>`
 
 ### 17. Theme System
 Port `lib/theme.ts`.
 
-- [ ] Create `theme.rs` with `apply_theme()`, `get_stored_theme()`, `set_stored_theme()`, etc.
-- [ ] Read/write localStorage via `web_sys::Storage`
-- [ ] Manipulate `document.documentElement.classList` via `web_sys`
-- [ ] Call `initialize_theme()` in `main.rs` before mount
-- [ ] Add solar-dusk and nature theme CSS variables to `style.css` (currently only amethyst-haze)
+- [x] Create `theme.rs` with `apply_theme()`, `get_stored_theme()`, `set_stored_theme()`, etc.
+- [x] Read/write localStorage via `web_sys::Storage`
+- [x] Manipulate `document.documentElement.classList` via `web_sys`
+- [x] Call `initialize_theme()` in `main.rs` before mount
+- [x] Add solar-dusk and nature theme CSS variables to `style.css` (currently only amethyst-haze)
 
 ### 19. Cleanup
 - [ ] Remove all `[store]` debug console.log statements from `connection_store.rs`
@@ -210,10 +210,10 @@ src-leptos/
     ├── data_table.rs         ✅  Generic sortable table component with FK support
     ├── indexes_page.rs       ✅  Indexes viewer
     ├── roles_page.rs         ✅  Roles viewer with detail side panel
-    ├── theme.rs              ⬜  Theme/mode management (localStorage + classList)
-    └── settings_page.rs      ⬜  Settings (theme picker, about)
+    ├── theme.rs              ✅  Theme/mode management (localStorage + classList)
+    └── settings_page.rs      ✅  Settings (theme picker, about)
 
-style.css                     ✅  Base styles + amethyst-haze tokens (needs solar-dusk + nature)
+style.css                     ✅  Base styles + all three theme tokens (amethyst-haze, solar-dusk, nature)
 index.html                    ✅  Trunk entry point
 Trunk.toml                    ✅  Build config
 

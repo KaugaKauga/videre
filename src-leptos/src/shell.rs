@@ -6,6 +6,7 @@ use crate::connection::ConnectionPage;
 use crate::empty::{EmptyState, EmptyTab};
 use crate::indexes_page::IndexesPage;
 use crate::roles_page::RolesPage;
+use crate::settings_page::SettingsPage;
 use crate::sidebar::Sidebar;
 use crate::tab_bar::TabBar;
 use crate::tab_store::{TabStore, TabType};
@@ -50,11 +51,7 @@ pub fn Shell() -> impl IntoView {
                                     }.into_any()
                                 }
                                 TabType::Settings => {
-                                    view! {
-                                        <div class="placeholder-page">
-                                            <span class="text-muted">"Settings (coming soon)"</span>
-                                        </div>
-                                    }.into_any()
+                                    view! { <SettingsPage /> }.into_any()
                                 }
                                 TabType::Indexes => {
                                     view! { <IndexesPage /> }.into_any()
