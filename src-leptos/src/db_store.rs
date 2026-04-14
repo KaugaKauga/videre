@@ -131,6 +131,7 @@ impl DbStore {
     }
 
     /// Disconnect from the database and reset all state to defaults.
+    #[allow(dead_code)]
     pub fn disconnect(self) {
         spawn_local(async move {
             if let Err(e) = tauri::invoke_void("disconnect_db", &serde_json::json!({})).await {
@@ -171,6 +172,7 @@ impl DbStore {
     }
 
     /// Get indexes for a specific table.
+    #[allow(dead_code)]
     pub fn get_indexes_for_table(&self, table_name: &str, schema: &str) -> Vec<IndexInfo> {
         let key = format!("{schema}.{table_name}");
         self.indexes

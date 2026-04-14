@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 
 use crate::db_store::DbStore;
+use crate::icons;
 use crate::tab_store::{TabStore, TabType};
 
 #[component]
@@ -28,14 +29,7 @@ pub fn Sidebar() -> impl IntoView {
         <aside class="sidebar">
             // Header
             <div class="sidebar-header">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <ellipse cx="12" cy="6" rx="8" ry="3"/>
-                    <path d="M4 6v6a8 3 0 0 0 16 0v-6"/>
-                    <path d="M4 12v6a8 3 0 0 0 16 0v-6"/>
-                </svg>
+                {icons::icon_database(20)}
                 <h2 class="sidebar-title">"Videre"</h2>
             </div>
 
@@ -52,20 +46,7 @@ pub fn Sidebar() -> impl IntoView {
                             if loading {
                                 view! {
                                     <div class="sidebar-loading">
-                                        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg"
-                                             width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                             stroke="currentColor" stroke-width="2"
-                                             stroke-linecap="round" stroke-linejoin="round">
-                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 6l0 -3"/>
-                                            <path d="M16.25 7.75l2.15 -2.15"/>
-                                            <path d="M18 12l3 0"/>
-                                            <path d="M16.25 16.25l2.15 2.15"/>
-                                            <path d="M12 18l0 3"/>
-                                            <path d="M7.75 16.25l-2.15 2.15"/>
-                                            <path d="M6 12l-3 0"/>
-                                            <path d="M7.75 7.75l-2.15 -2.15"/>
-                                        </svg>
+                                        {icons::icon_spinner(16)}
                                     </div>
                                 }.into_any()
                             } else if tables.is_empty() {
@@ -105,29 +86,11 @@ pub fn Sidebar() -> impl IntoView {
                 <div class="sidebar-bottom-section">
                     <nav class="sidebar-menu">
                         <button class="sidebar-menu-button" on:click=on_indexes_click>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M9 6l11 0"/>
-                                <path d="M9 12l11 0"/>
-                                <path d="M9 18l11 0"/>
-                                <path d="M5 6l0 .01"/>
-                                <path d="M5 12l0 .01"/>
-                                <path d="M5 18l0 .01"/>
-                            </svg>
+                            {icons::icon_list(16)}
                             <span>"Indexes"</span>
                         </button>
                         <button class="sidebar-menu-button" on:click=on_roles_click>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                <path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/>
-                            </svg>
+                            {icons::icon_users(16)}
                             <span>"Roles"</span>
                         </button>
                     </nav>

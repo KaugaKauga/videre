@@ -29,10 +29,8 @@ thread_local! {
 
 async fn get_rid() -> Result<u32, String> {
     if let Some(rid) = STORE_RID.with(|c| c.get()) {
-        web_sys::console::log_1(&format!("[store] reusing cached rid={rid}").into());
         return Ok(rid);
     }
-    web_sys::console::log_1(&"[store] calling plugin:store|load ...".into());
     let rid: u32 = tauri::invoke(
         "plugin:store|load",
         &serde_json::json!({ "path": "connections.json" }),
@@ -42,16 +40,12 @@ async fn get_rid() -> Result<u32, String> {
         web_sys::console::error_1(&format!("[store] load failed: {e}").into());
         e
     })?;
-    web_sys::console::log_1(&format!("[store] got rid={rid}").into());
     STORE_RID.with(|c| c.set(Some(rid)));
     Ok(rid)
 }
 
 async fn store_get_connections() -> Result<Vec<SavedConnection>, String> {
     let rid = get_rid().await?;
-    web_sys::console::log_1(
-        &format!("[store] calling plugin:store|get rid={rid} key=connections").into(),
-    );
     let result: (serde_json::Value, bool) = tauri::invoke(
         "plugin:store|get",
         &serde_json::json!({ "rid": rid, "key": "connections" }),
@@ -61,13 +55,6 @@ async fn store_get_connections() -> Result<Vec<SavedConnection>, String> {
         web_sys::console::error_1(&format!("[store] get failed: {e}").into());
         e
     })?;
-    web_sys::console::log_1(
-        &format!(
-            "[store] get returned exists={}, value={}",
-            result.1, result.0
-        )
-        .into(),
-    );
     if result.1 {
         let conns: Vec<SavedConnection> = serde_json::from_value(result.0).map_err(|e| {
             web_sys::console::error_1(
@@ -75,10 +62,8 @@ async fn store_get_connections() -> Result<Vec<SavedConnection>, String> {
             );
             e.to_string()
         })?;
-        web_sys::console::log_1(&format!("[store] loaded {} connections", conns.len()).into());
         Ok(conns)
     } else {
-        web_sys::console::log_1(&"[store] no connections key found, returning empty".into());
         Ok(Vec::new())
     }
 }
@@ -86,13 +71,6 @@ async fn store_get_connections() -> Result<Vec<SavedConnection>, String> {
 async fn store_set_connections(connections: &[SavedConnection]) -> Result<(), String> {
     let rid = get_rid().await?;
     let value = serde_json::to_value(connections).map_err(|e| e.to_string())?;
-    web_sys::console::log_1(
-        &format!(
-            "[store] calling plugin:store|set rid={rid} with {} connections",
-            connections.len()
-        )
-        .into(),
-    );
     tauri::invoke_void(
         "plugin:store|set",
         &serde_json::json!({ "rid": rid, "key": "connections", "value": value }),
@@ -102,14 +80,12 @@ async fn store_set_connections(connections: &[SavedConnection]) -> Result<(), St
         web_sys::console::error_1(&format!("[store] set failed: {e}").into());
         e
     })?;
-    web_sys::console::log_1(&"[store] calling plugin:store|save ...".into());
     tauri::invoke_void("plugin:store|save", &serde_json::json!({ "rid": rid }))
         .await
         .map_err(|e| {
             web_sys::console::error_1(&format!("[store] save failed: {e}").into());
             e
         })?;
-    web_sys::console::log_1(&"[store] save OK".into());
     Ok(())
 }
 
@@ -135,13 +111,9 @@ impl ConnectionStore {
         let connections = RwSignal::new(Vec::<SavedConnection>::new());
         let is_loaded = RwSignal::new(false);
 
-        web_sys::console::log_1(&"[store] init() starting async load ...".into());
         spawn_local(async move {
             match store_get_connections().await {
                 Ok(conns) => {
-                    web_sys::console::log_1(
-                        &format!("[store] init loaded {} connections", conns.len()).into(),
-                    );
                     connections.set(conns);
                 }
                 Err(e) => web_sys::console::error_1(
@@ -159,9 +131,6 @@ impl ConnectionStore {
 
     /// Save (or bump) a connection and persist to disk.
     pub fn save_connection(self, host: String, port: String, database: String, username: String) {
-        web_sys::console::log_1(
-            &format!("[store] save_connection called: {database}@{host}:{port}").into(),
-        );
         let connections = self.connections;
         spawn_local(async move {
             let mut conns = connections.get_untracked();

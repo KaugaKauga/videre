@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 
+use crate::icons;
 use crate::tab_store::TabStore;
 
 /// Horizontal tab strip rendered above the content area.
@@ -42,13 +43,7 @@ pub fn TabBar() -> impl IntoView {
                                 tab_store.close_tab(&id_close);
                             }
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
-                                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M18 6l-12 12"/>
-                                <path d="M6 6l12 12"/>
-                            </svg>
+                            {icons::icon_x(12)}
                         </button>
                         {if is_active {
                             Some(view! { <div class="tab-indicator"/> })

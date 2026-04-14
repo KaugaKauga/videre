@@ -173,10 +173,10 @@ Port `lib/theme.ts`.
 - [x] Add solar-dusk and nature theme CSS variables to `style.css` (currently only amethyst-haze)
 
 ### 19. Cleanup
-- [ ] Remove all `[store]` debug console.log statements from `connection_store.rs`
-- [ ] Suppress unused type warnings with `#[allow(dead_code)]` or by actually using them
-- [ ] Review and tighten `web-sys` feature flags
-- [ ] Consider extracting SVG icons into a shared `icons.rs` module to reduce duplication
+- [x] Remove all `[store]` debug console.log statements from `connection_store.rs`
+- [x] Suppress unused type warnings with `#[allow(dead_code)]` or by actually using them
+- [x] Review and tighten `web-sys` feature flags (removed unused `HtmlElement`, `InputEvent`)
+- [x] Extract SVG icons into a shared `icons.rs` module (database, spinner, list, users, x — 10 call sites)
 
 ### 20. Final Validation
 - [ ] Verify all Tauri IPC commands work: `test_connection`, `connect_to_db`, `get_tables`, `get_table_data`, `get_foreign_keys`, `get_indexes`, `get_roles`, `get_table_privileges`, `get_row_by_pk`, `disconnect_db`
@@ -210,6 +210,7 @@ src-leptos/
     ├── data_table.rs         ✅  Generic sortable table component with FK support
     ├── indexes_page.rs       ✅  Indexes viewer
     ├── roles_page.rs         ✅  Roles viewer with detail side panel
+    ├── icons.rs              ✅  Shared SVG icon functions (database, spinner, list, users, x)
     ├── theme.rs              ✅  Theme/mode management (localStorage + classList)
     └── settings_page.rs      ✅  Settings (theme picker, about)
 

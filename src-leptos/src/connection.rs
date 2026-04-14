@@ -4,6 +4,7 @@ use wasm_bindgen::JsCast;
 
 use crate::connection_store::ConnectionStore;
 use crate::db_store::DbStore;
+use crate::icons;
 use crate::tauri;
 use crate::types::{ConnectionConfig, ConnectionResult};
 
@@ -162,12 +163,7 @@ pub fn ConnectionPage() -> impl IntoView {
                 <div class="connection-card card">
                     <div class="card-header">
                         <div class="connection-title-row">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M12 6m-8 0a8 3 0 1 0 16 0a8 3 0 1 0 -16 0"/>
-                                <path d="M4 6v6a8 3 0 0 0 16 0v-6"/>
-                                <path d="M4 12v6a8 3 0 0 0 16 0v-6"/>
-                            </svg>
+                            {icons::icon_database(24)}
                             <h1>"Connect to PostgreSQL"</h1>
                         </div>
                         <p class="card-description">"Enter your database connection details to get started"</p>
@@ -226,13 +222,13 @@ pub fn ConnectionPage() -> impl IntoView {
                             <div class="connection-actions">
                                 <button type="button" class="btn btn-secondary" on:click=on_test disabled=is_loading>
                                     {move || if matches!(status.get(), Status::Testing) {
-                                        view! { <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 6l0 -3"/><path d="M16.25 7.75l2.15 -2.15"/><path d="M18 12l3 0"/><path d="M16.25 16.25l2.15 2.15"/><path d="M12 18l0 3"/><path d="M7.75 16.25l-2.15 2.15"/><path d="M6 12l-3 0"/><path d="M7.75 7.75l-2.15 -2.15"/></svg> }.into_any()
+                                        view! { {icons::icon_spinner(16)} }.into_any()
                                     } else { view! { <span/> }.into_any() }}
                                     "Test"
                                 </button>
                                 <button type="submit" class="btn btn-primary" disabled=is_loading>
                                     {move || if matches!(status.get(), Status::Connecting) {
-                                        view! { <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 6l0 -3"/><path d="M16.25 7.75l2.15 -2.15"/><path d="M18 12l3 0"/><path d="M16.25 16.25l2.15 2.15"/><path d="M12 18l0 3"/><path d="M7.75 16.25l-2.15 2.15"/><path d="M6 12l-3 0"/><path d="M7.75 7.75l-2.15 -2.15"/></svg> }.into_any()
+                                        view! { {icons::icon_spinner(16)} }.into_any()
                                     } else { view! { <span/> }.into_any() }}
                                     "Connect"
                                 </button>

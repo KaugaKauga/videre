@@ -6,6 +6,7 @@ use leptos::task::spawn_local;
 use crate::data_table::DataTable;
 use crate::db_store::DbStore;
 use crate::drawer::Drawer;
+use crate::icons;
 use crate::tauri;
 use crate::types::{ForeignKeyInfo, RowData, TableData};
 
@@ -156,6 +157,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
         page.set(p);
         fetch_page(&name_next, &schema_next, p, data, is_loading, error);
     };
+    let _ = &on_next;
 
     // ---- Display name ------------------------------------------------------
     let display_name = name.clone();
@@ -168,20 +170,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                 if is_loading.get() && data.get().is_none() {
                     Some(view! {
                         <div class="table-page-loading">
-                            <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg"
-                                 width="20" height="20" viewBox="0 0 24 24" fill="none"
-                                 stroke="currentColor" stroke-width="2"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M12 6l0 -3"/>
-                                <path d="M16.25 7.75l2.15 -2.15"/>
-                                <path d="M18 12l3 0"/>
-                                <path d="M16.25 16.25l2.15 2.15"/>
-                                <path d="M12 18l0 3"/>
-                                <path d="M7.75 16.25l-2.15 2.15"/>
-                                <path d="M6 12l-3 0"/>
-                                <path d="M7.75 7.75l-2.15 -2.15"/>
-                            </svg>
+                            {icons::icon_spinner(20)}
                             <span>"Loading data\u{2026}"</span>
                         </div>
                     })
@@ -275,20 +264,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                     if panel_loading.get() {
                         return view! {
                             <div class="table-page-loading">
-                                <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg"
-                                     width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                     stroke="currentColor" stroke-width="2"
-                                     stroke-linecap="round" stroke-linejoin="round">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M12 6l0 -3"/>
-                                    <path d="M16.25 7.75l2.15 -2.15"/>
-                                    <path d="M18 12l3 0"/>
-                                    <path d="M16.25 16.25l2.15 2.15"/>
-                                    <path d="M12 18l0 3"/>
-                                    <path d="M7.75 16.25l-2.15 2.15"/>
-                                    <path d="M6 12l-3 0"/>
-                                    <path d="M7.75 7.75l-2.15 -2.15"/>
-                                </svg>
+                                {icons::icon_spinner(16)}
                                 <span>"Loading\u{2026}"</span>
                             </div>
                         }.into_any();
