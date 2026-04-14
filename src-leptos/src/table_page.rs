@@ -269,6 +269,10 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
             }}
 
             // FK detail side panel
+            <div
+                class=move || if panel_open.get() { "row-detail-backdrop open" } else { "row-detail-backdrop" }
+                on:click=move |_| panel_open.set(false)
+            />
             <div class=move || {
                 if panel_open.get() { "row-detail-panel open" } else { "row-detail-panel" }
             }>

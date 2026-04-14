@@ -1233,3 +1233,21 @@ kbd {
 .priv-row:last-child {
     border-bottom: none;
 }
+
+/* ===================================================================
+   Detail panel backdrop (click-outside-to-close)
+   =================================================================== */
+
+.row-detail-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 19;
+    background: oklch(0 0 0 / 0);
+    pointer-events: none;
+    transition: background 0.2s ease;
+}
+
+.row-detail-backdrop.open {
+    pointer-events: auto;
+    background: oklch(0 0 0 / 0.15);
+}
