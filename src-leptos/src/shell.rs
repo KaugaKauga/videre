@@ -4,6 +4,7 @@ use wasm_bindgen::JsCast;
 
 use crate::connection::ConnectionPage;
 use crate::empty::{EmptyState, EmptyTab};
+use crate::indexes_page::IndexesPage;
 use crate::sidebar::Sidebar;
 use crate::tab_bar::TabBar;
 use crate::tab_store::{TabStore, TabType};
@@ -55,11 +56,7 @@ pub fn Shell() -> impl IntoView {
                                     }.into_any()
                                 }
                                 TabType::Indexes => {
-                                    view! {
-                                        <div class="placeholder-page">
-                                            <span class="text-muted">"Indexes (coming soon)"</span>
-                                        </div>
-                                    }.into_any()
+                                    view! { <IndexesPage /> }.into_any()
                                 }
                                 TabType::Roles => {
                                     view! {

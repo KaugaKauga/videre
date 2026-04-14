@@ -2,6 +2,7 @@ mod connection;
 mod connection_store;
 mod data_table;
 mod db_store;
+mod indexes_page;
 mod empty;
 mod shell;
 mod sidebar;

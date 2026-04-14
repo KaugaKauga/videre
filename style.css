@@ -1088,3 +1088,43 @@ kbd {
     color: var(--foreground);
     word-break: break-all;
 }
+
+/* ===================================================================
+   Indexes / Roles page extras
+   =================================================================== */
+
+.mono {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+}
+
+.cell-center {
+    text-align: center;
+}
+
+.cell-right {
+    text-align: right;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--muted);
+    color: var(--muted-foreground);
+}
+
+.bool-yes {
+    color: var(--success);
+}
+
+.bool-primary {
+    color: var(--primary);
+}
+
+.bool-no {
+    color: var(--muted-foreground);
+}

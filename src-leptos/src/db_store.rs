@@ -151,9 +151,10 @@ impl DbStore {
 
     // -- Lookup helpers --------------------------------------------------
     //
-    // These read the current signal value and filter. Because they call
-    // `.get()` on the signal, any reactive context (e.g. inside `view!`)
-    // will automatically re-run when the underlying data changes.
+    // These use `.get_untracked()` because they are called from component
+    // bodies as one-shot reads (e.g. building an FK map when a TablePage
+    // mounts).  The metadata is static for the lifetime of a connection so
+    // reactive tracking is not needed.
 
     /// Get foreign keys for a specific table.
     pub fn get_foreign_keys_for_table(
@@ -163,7 +164,7 @@ impl DbStore {
     ) -> Vec<ForeignKeyInfo> {
         let key = format!("{schema}.{table_name}");
         self.foreign_keys
-            .get()
+            .get_untracked()
             .get(&key)
             .cloned()
             .unwrap_or_default()
@@ -172,13 +173,17 @@ impl DbStore {
     /// Get indexes for a specific table.
     pub fn get_indexes_for_table(&self, table_name: &str, schema: &str) -> Vec<IndexInfo> {
         let key = format!("{schema}.{table_name}");
-        self.indexes.get().get(&key).cloned().unwrap_or_default()
+        self.indexes
+            .get_untracked()
+            .get(&key)
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Get table privileges for a specific role.
     pub fn get_privileges_for_role(&self, role_name: &str) -> Vec<TablePrivilege> {
         self.table_privileges
-            .get()
+            .get_untracked()
             .into_iter()
             .filter(|p| p.grantee == role_name)
             .collect()
