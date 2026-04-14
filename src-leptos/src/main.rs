@@ -4,6 +4,7 @@ mod data_table;
 mod db_store;
 mod indexes_page;
 mod empty;
+mod roles_page;
 mod shell;
 mod sidebar;
 mod tab_bar;

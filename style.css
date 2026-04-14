@@ -1128,3 +1128,108 @@ kbd {
 .bool-no {
     color: var(--muted-foreground);
 }
+
+/* ===================================================================
+   Badge variants (permission badges)
+   =================================================================== */
+
+.badge-danger {
+    background: oklch(from var(--destructive) l c h / 0.12);
+    color: var(--destructive);
+}
+
+.badge-success {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.badge-info {
+    background: oklch(from var(--primary) l c h / 0.12);
+    color: var(--primary);
+}
+
+.badge-warn {
+    background: oklch(0.75 0.15 85 / 0.15);
+    color: oklch(0.55 0.15 85);
+}
+
+.text-danger {
+    color: var(--destructive);
+}
+
+.badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+/* ===================================================================
+   Roles page layout
+   =================================================================== */
+
+.roles-body {
+    padding: 1.5rem;
+}
+
+.roles-section + .roles-section {
+    margin-top: 2rem;
+}
+
+.roles-section-title {
+    font-size: 1.0625rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+}
+
+/* ===================================================================
+   Role detail panel content
+   =================================================================== */
+
+.role-detail-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.role-detail-section {
+    /* intentionally blank — spacing is on parent gap */
+}
+
+.role-detail-heading {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-bottom: 0.625rem;
+}
+
+.role-prop-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+}
+
+.role-prop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.priv-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+.priv-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.priv-row:last-child {
+    border-bottom: none;
+}

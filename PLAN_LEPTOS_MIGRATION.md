@@ -139,17 +139,20 @@ Port `components/DataTable.tsx`. Generic sortable table.
 ### 14. Indexes Page
 Port `features/indexes/IndexesPage.tsx`.
 
-- [ ] Read indexes from `DbStore`
-- [ ] Display in a table: index name, table, columns, unique, primary, type, size
-- [ ] Reuse `DataTable` component
+- [x] Read indexes from `DbStore` (flattened from all per-table maps, sorted by schema/table/name)
+- [x] Display in a table: index name, table, columns, unique (✓/—), primary (✓/—), type (badge), size (formatted bytes)
+- [x] Empty state with list icon
+- [x] Header with total index count across N tables
 
 ### 15. Roles Page
 Port `features/roles/RolesPage.tsx`.
 
-- [ ] Read roles + privileges from `DbStore`
-- [ ] Roles table: role name, superuser, can_login, create_db, create_role, connection_limit, valid_until
-- [ ] Expandable privileges per role
-- [ ] Reuse `DataTable` component
+- [x] Read roles + privileges from `DbStore`
+- [x] Split into Users (can_login) and Groups tables
+- [x] Permission summaries per role (superuser / read-write / read-only / mixed / none) with colored badges
+- [x] Users table: name (clickable), permissions, member of, conn limit, valid until
+- [x] Groups table: name (clickable), permissions
+- [x] Role detail side panel: properties, member-of badges, per-table privilege badges (SELECT/INSERT/UPDATE/DELETE)
 
 ### 16. Settings Page
 Port `features/settings/SettingsPage.tsx`.
@@ -205,9 +208,9 @@ src-leptos/
     ├── empty.rs              ✅  EmptyState + EmptyTab components
     ├── table_page.rs         ✅  Table data browser with pagination + FK side panel
     ├── data_table.rs         ✅  Generic sortable table component with FK support
+    ├── indexes_page.rs       ✅  Indexes viewer
+    ├── roles_page.rs         ✅  Roles viewer with detail side panel
     ├── theme.rs              ⬜  Theme/mode management (localStorage + classList)
-    ├── indexes_page.rs       ⬜  Indexes viewer
-    ├── roles_page.rs         ⬜  Roles viewer
     └── settings_page.rs      ⬜  Settings (theme picker, about)
 
 style.css                     ✅  Base styles + amethyst-haze tokens (needs solar-dusk + nature)

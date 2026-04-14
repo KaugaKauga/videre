@@ -5,6 +5,7 @@ use wasm_bindgen::JsCast;
 use crate::connection::ConnectionPage;
 use crate::empty::{EmptyState, EmptyTab};
 use crate::indexes_page::IndexesPage;
+use crate::roles_page::RolesPage;
 use crate::sidebar::Sidebar;
 use crate::tab_bar::TabBar;
 use crate::tab_store::{TabStore, TabType};
@@ -59,11 +60,7 @@ pub fn Shell() -> impl IntoView {
                                     view! { <IndexesPage /> }.into_any()
                                 }
                                 TabType::Roles => {
-                                    view! {
-                                        <div class="placeholder-page">
-                                            <span class="text-muted">"Roles (coming soon)"</span>
-                                        </div>
-                                    }.into_any()
+                                    view! { <RolesPage /> }.into_any()
                                 }
                             },
                         }
