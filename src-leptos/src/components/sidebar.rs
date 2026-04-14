@@ -1,8 +1,8 @@
 use leptos::prelude::*;
 
-use crate::db_store::DbStore;
-use crate::icons;
-use crate::tab_store::{TabStore, TabType};
+use crate::stores::db_store::DbStore;
+use crate::components::icons;
+use crate::stores::tab_store::{TabStore, TabType};
 
 #[component]
 pub fn Sidebar() -> impl IntoView {

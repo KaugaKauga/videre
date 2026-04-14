@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use leptos::prelude::*;
 
-use crate::db_store::DbStore;
-use crate::drawer::Drawer;
+use crate::stores::db_store::DbStore;
+use crate::components::drawer::Drawer;
 use crate::types::{RoleInfo, TablePrivilege};
 
 // ---------------------------------------------------------------------------

@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
-use crate::data_table::DataTable;
-use crate::db_store::DbStore;
-use crate::drawer::Drawer;
-use crate::icons;
+use crate::components::data_table::DataTable;
+use crate::stores::db_store::DbStore;
+use crate::components::drawer::Drawer;
+use crate::components::icons;
 use crate::tauri;
 use crate::types::{ForeignKeyInfo, RowData, TableData};
 

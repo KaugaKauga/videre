@@ -2,9 +2,9 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
 
-use crate::connection_store::ConnectionStore;
-use crate::db_store::DbStore;
-use crate::icons;
+use crate::stores::connection_store::ConnectionStore;
+use crate::stores::db_store::DbStore;
+use crate::components::icons;
 use crate::tauri;
 use crate::types::{ConnectionConfig, ConnectionResult};
 

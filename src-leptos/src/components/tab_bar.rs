@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 
-use crate::icons;
-use crate::tab_store::TabStore;
+use crate::components::icons;
+use crate::stores::tab_store::TabStore;
 
 /// Horizontal tab strip rendered above the content area.
 ///

@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use crate::db_store::DbStore;
+use crate::stores::db_store::DbStore;
 use crate::types::IndexInfo;
 
 // ---------------------------------------------------------------------------
