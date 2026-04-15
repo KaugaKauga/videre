@@ -188,7 +188,7 @@ pub async fn get_tables(state: State<'_, DbState>) -> Result<Vec<TableInfo>, Str
 pub struct TableData {
     pub columns: Vec<String>,
     pub rows: Vec<Vec<serde_json::Value>>,
-    pub total_rows: usize,
+    pub total_rows: i64,
 }
 
 #[tauri::command]
@@ -287,7 +287,7 @@ pub async fn get_table_data(
             Ok(TableData {
                 columns,
                 rows: data_rows,
-                total_rows: total_rows as usize,
+                total_rows,
             })
         }
         None => Err("Not connected to database".to_string()),
