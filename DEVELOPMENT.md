@@ -115,9 +115,50 @@ bun run tauri dev    # Start Tauri app in dev mode
 bun run build        # Build frontend
 bun run tauri build  # Build production app
 
+# Testing
+cargo test --manifest-path src-tauri/Cargo.toml        # All tests (needs database)
+cargo test --manifest-path src-tauri/Cargo.toml --lib   # Unit tests only
+
 # Preview
 bun run preview      # Preview production build
 ```
+
+## Testing
+
+The backend test suite covers SQL query building (unit tests) and database operations (integration tests).
+
+### Prerequisites
+
+Integration tests require a running PostgreSQL instance:
+
+```bash
+docker-compose up -d
+```
+
+See the [Test Database](#test-database) section above for connection details.
+
+### Running Tests
+
+```bash
+# Run all tests (unit + integration)
+cargo test --manifest-path src-tauri/Cargo.toml
+
+# Run only unit tests (no database required)
+cargo test --manifest-path src-tauri/Cargo.toml --lib
+
+# Run only integration tests
+cargo test --manifest-path src-tauri/Cargo.toml --test db_integration
+
+# Run a specific test by name
+cargo test --manifest-path src-tauri/Cargo.toml <test_name>
+```
+
+### What's Tested
+
+| Category | Location | Description |
+|----------|----------|-------------|
+| SQL query building | `src-tauri/src/db.rs` (unit tests) | Verifies correct SQL generation for tables, views, indexes, roles, foreign keys, pagination, and sorting |
+| Database integration | `src-tauri/tests/db_integration.rs` | Validates queries against a real PostgreSQL instance using the test database |
 
 ## Keyboard Shortcuts
 

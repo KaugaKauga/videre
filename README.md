@@ -87,6 +87,23 @@ docker-compose up -d    # Start test database
 bun run tauri dev       # Run the app
 ```
 
+## Testing
+
+The Tauri backend includes integration tests that verify database queries against a real PostgreSQL instance.
+
+```bash
+# Start the test database (required)
+docker-compose up -d
+
+# Run all tests (unit + integration)
+cargo test --manifest-path src-tauri/Cargo.toml
+
+# Run only unit tests (no database required)
+cargo test --manifest-path src-tauri/Cargo.toml --lib
+```
+
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for test database connection details and sample data.
+
 ## Tech Stack
 
 | Layer    | Technology |

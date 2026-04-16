@@ -173,23 +173,23 @@ pub fn ConnectionPage() -> impl IntoView {
                         <form on:submit=on_connect>
                             <div class="field">
                                 <label for="host">"Host"</label>
-                                <input type="text" id="host" placeholder="localhost" prop:value=host on:input=move |ev| set_host.set(val(ev.into())) required />
+                                <input type="text" id="host" placeholder="localhost" prop:value=host on:input=move |ev| set_host.set(val(ev)) required />
                             </div>
                             <div class="field">
                                 <label for="port">"Port"</label>
-                                <input type="text" id="port" placeholder="5432" prop:value=port on:input=move |ev| set_port.set(val(ev.into())) required />
+                                <input type="text" id="port" placeholder="5432" prop:value=port on:input=move |ev| set_port.set(val(ev)) required />
                             </div>
                             <div class="field">
                                 <label for="database">"Database"</label>
-                                <input type="text" id="database" placeholder="my_database" prop:value=database on:input=move |ev| set_database.set(val(ev.into())) required />
+                                <input type="text" id="database" placeholder="my_database" prop:value=database on:input=move |ev| set_database.set(val(ev)) required />
                             </div>
                             <div class="field">
                                 <label for="username">"Username"</label>
-                                <input type="text" id="username" placeholder="postgres" prop:value=username on:input=move |ev| set_username.set(val(ev.into())) required />
+                                <input type="text" id="username" placeholder="postgres" prop:value=username on:input=move |ev| set_username.set(val(ev)) required />
                             </div>
                             <div class="field">
                                 <label for="password">"Password"</label>
-                                <input type="password" id="password" placeholder="Enter your password" prop:value=password on:input=move |ev| set_password.set(val(ev.into())) required />
+                                <input type="password" id="password" placeholder="Enter your password" prop:value=password on:input=move |ev| set_password.set(val(ev)) required />
                             </div>
 
                             {move || {
