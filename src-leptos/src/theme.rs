@@ -194,3 +194,95 @@ pub fn set_mode(mode: Mode) {
     set_stored_mode(mode);
     apply_theme(theme, mode);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -- ThemeName ----------------------------------------------------------
+
+    #[test]
+    fn theme_as_str_returns_css_class() {
+        assert_eq!(ThemeName::AmethystHaze.as_str(), "amethyst-haze");
+        assert_eq!(ThemeName::SolarDusk.as_str(), "solar-dusk");
+        assert_eq!(ThemeName::Nature.as_str(), "nature");
+    }
+
+    #[test]
+    fn theme_from_str_known_values() {
+        assert_eq!(ThemeName::from_str("amethyst-haze"), ThemeName::AmethystHaze);
+        assert_eq!(ThemeName::from_str("solar-dusk"), ThemeName::SolarDusk);
+        assert_eq!(ThemeName::from_str("nature"), ThemeName::Nature);
+    }
+
+    #[test]
+    fn theme_from_str_unknown_defaults_to_amethyst_haze() {
+        assert_eq!(ThemeName::from_str(""), ThemeName::AmethystHaze);
+        assert_eq!(ThemeName::from_str("neon-glow"), ThemeName::AmethystHaze);
+        assert_eq!(ThemeName::from_str("NATURE"), ThemeName::AmethystHaze);
+    }
+
+    #[test]
+    fn theme_round_trip_through_str() {
+        for theme in ThemeName::ALL {
+            assert_eq!(ThemeName::from_str(theme.as_str()), theme);
+        }
+    }
+
+    #[test]
+    fn theme_all_has_three_variants() {
+        assert_eq!(ThemeName::ALL.len(), 3);
+    }
+
+    #[test]
+    fn theme_display_name_is_human_readable() {
+        assert_eq!(ThemeName::AmethystHaze.display_name(), "Amethyst Haze");
+        assert_eq!(ThemeName::SolarDusk.display_name(), "Solar Dusk");
+        assert_eq!(ThemeName::Nature.display_name(), "Nature");
+    }
+
+    #[test]
+    fn theme_description_not_empty() {
+        for theme in ThemeName::ALL {
+            assert!(!theme.description().is_empty());
+        }
+    }
+
+    // -- Mode ---------------------------------------------------------------
+
+    #[test]
+    fn mode_as_str() {
+        assert_eq!(Mode::Light.as_str(), "light");
+        assert_eq!(Mode::Dark.as_str(), "dark");
+    }
+
+    #[test]
+    fn mode_from_str_known_values() {
+        assert_eq!(Mode::from_str("light"), Mode::Light);
+        assert_eq!(Mode::from_str("dark"), Mode::Dark);
+    }
+
+    #[test]
+    fn mode_from_str_unknown_defaults_to_light() {
+        assert_eq!(Mode::from_str(""), Mode::Light);
+        assert_eq!(Mode::from_str("auto"), Mode::Light);
+    }
+
+    #[test]
+    fn mode_round_trip_through_str() {
+        assert_eq!(Mode::from_str(Mode::Light.as_str()), Mode::Light);
+        assert_eq!(Mode::from_str(Mode::Dark.as_str()), Mode::Dark);
+    }
+
+    #[test]
+    fn mode_display_name() {
+        assert_eq!(Mode::Light.display_name(), "Light");
+        assert_eq!(Mode::Dark.display_name(), "Dark");
+    }
+
+    #[test]
+    fn mode_description_not_empty() {
+        assert!(!Mode::Light.description().is_empty());
+        assert!(!Mode::Dark.description().is_empty());
+    }
+}
