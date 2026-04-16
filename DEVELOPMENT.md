@@ -115,6 +115,10 @@ bun run tauri dev    # Start Tauri app in dev mode
 bun run build        # Build frontend
 bun run tauri build  # Build production app
 
+# Testing
+cargo test --manifest-path src-tauri/Cargo.toml        # All tests (needs database)
+cargo test --manifest-path src-tauri/Cargo.toml --lib   # Unit tests only
+
 # Preview
 bun run preview      # Preview production build
 ```
