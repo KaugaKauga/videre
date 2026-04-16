@@ -28,6 +28,12 @@ impl DbState {
     }
 }
 
+impl Default for DbState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct ConnectionResult {
     pub success: bool,
@@ -605,4 +611,332 @@ pub async fn disconnect_db(state: State<'_, DbState>) -> Result<(), String> {
     *config_lock = None;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_config() -> ConnectionConfig {
+        ConnectionConfig {
+            host: "localhost".to_string(),
+            port: "5432".to_string(),
+            database: "videre_test".to_string(),
+            username: "videre".to_string(),
+            password: "videre".to_string(),
+        }
+    }
+
+    #[test]
+    fn db_state_new_has_no_client() {
+        let state = DbState::new();
+        let client = state.client.try_lock().unwrap();
+        assert!(client.is_none());
+    }
+
+    #[test]
+    fn db_state_new_has_no_config() {
+        let state = DbState::new();
+        let config = state.config.try_lock().unwrap();
+        assert!(config.is_none());
+    }
+
+    #[test]
+    fn connection_config_serializes_to_json() {
+        let config = sample_config();
+        let json = serde_json::to_value(&config).unwrap();
+        assert_eq!(json["host"], "localhost");
+        assert_eq!(json["port"], "5432");
+        assert_eq!(json["database"], "videre_test");
+        assert_eq!(json["username"], "videre");
+        assert_eq!(json["password"], "videre");
+    }
+
+    #[test]
+    fn connection_config_deserializes_from_json() {
+        let json = serde_json::json!({
+            "host": "127.0.0.1",
+            "port": "5433",
+            "database": "mydb",
+            "username": "user",
+            "password": "pass"
+        });
+        let config: ConnectionConfig = serde_json::from_value(json).unwrap();
+        assert_eq!(config.host, "127.0.0.1");
+        assert_eq!(config.port, "5433");
+        assert_eq!(config.database, "mydb");
+    }
+
+    #[test]
+    fn connection_config_rejects_missing_fields() {
+        let json = serde_json::json!({
+            "host": "localhost",
+            "port": "5432"
+        });
+        let result: Result<ConnectionConfig, _> = serde_json::from_value(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn connection_result_serializes_success() {
+        let result = ConnectionResult {
+            success: true,
+            message: "Connected".to_string(),
+        };
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["success"], true);
+        assert_eq!(json["message"], "Connected");
+    }
+
+    #[test]
+    fn connection_result_serializes_failure() {
+        let result = ConnectionResult {
+            success: false,
+            message: "Connection refused".to_string(),
+        };
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["success"], false);
+        assert_eq!(json["message"], "Connection refused");
+    }
+
+    #[test]
+    fn table_info_serializes() {
+        let info = TableInfo {
+            name: "users".to_string(),
+            schema: "public".to_string(),
+        };
+        let json = serde_json::to_value(&info).unwrap();
+        assert_eq!(json["name"], "users");
+        assert_eq!(json["schema"], "public");
+    }
+
+    #[test]
+    fn table_data_serializes_with_rows() {
+        let data = TableData {
+            columns: vec!["id".to_string(), "name".to_string()],
+            rows: vec![vec![
+                serde_json::Value::Number(1.into()),
+                serde_json::Value::String("Alice".to_string()),
+            ]],
+            total_rows: 1,
+        };
+        let json = serde_json::to_value(&data).unwrap();
+        assert_eq!(json["columns"], serde_json::json!(["id", "name"]));
+        assert_eq!(json["total_rows"], 1);
+        assert_eq!(json["rows"][0][1], "Alice");
+    }
+
+    #[test]
+    fn table_data_serializes_empty() {
+        let data = TableData {
+            columns: vec![],
+            rows: vec![],
+            total_rows: 0,
+        };
+        let json = serde_json::to_value(&data).unwrap();
+        assert_eq!(json["total_rows"], 0);
+        assert!(json["rows"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn foreign_key_info_serializes() {
+        let fk = ForeignKeyInfo {
+            column_name: "user_id".to_string(),
+            foreign_table_schema: "public".to_string(),
+            foreign_table_name: "users".to_string(),
+            foreign_column_name: "id".to_string(),
+        };
+        let json = serde_json::to_value(&fk).unwrap();
+        assert_eq!(json["column_name"], "user_id");
+        assert_eq!(json["foreign_table_name"], "users");
+        assert_eq!(json["foreign_column_name"], "id");
+    }
+
+    #[test]
+    fn index_info_serializes() {
+        let idx = IndexInfo {
+            index_name: "idx_users_email".to_string(),
+            table_schema: "public".to_string(),
+            table_name: "users".to_string(),
+            columns: vec!["email".to_string()],
+            is_unique: true,
+            is_primary: false,
+            index_type: "btree".to_string(),
+            size_bytes: 8192,
+        };
+        let json = serde_json::to_value(&idx).unwrap();
+        assert_eq!(json["index_name"], "idx_users_email");
+        assert_eq!(json["is_unique"], true);
+        assert_eq!(json["is_primary"], false);
+        assert_eq!(json["index_type"], "btree");
+        assert_eq!(json["size_bytes"], 8192);
+        assert_eq!(json["columns"], serde_json::json!(["email"]));
+    }
+
+    #[test]
+    fn role_info_serializes() {
+        let role = RoleInfo {
+            role_name: "admin".to_string(),
+            is_superuser: true,
+            can_login: true,
+            can_create_db: true,
+            can_create_role: false,
+            connection_limit: -1,
+            valid_until: None,
+            member_of: vec!["pg_read_all_data".to_string()],
+        };
+        let json = serde_json::to_value(&role).unwrap();
+        assert_eq!(json["role_name"], "admin");
+        assert_eq!(json["is_superuser"], true);
+        assert_eq!(json["can_login"], true);
+        assert!(json["valid_until"].is_null());
+        assert_eq!(json["member_of"], serde_json::json!(["pg_read_all_data"]));
+    }
+
+    #[test]
+    fn role_info_serializes_with_expiry() {
+        let role = RoleInfo {
+            role_name: "temp_user".to_string(),
+            is_superuser: false,
+            can_login: true,
+            can_create_db: false,
+            can_create_role: false,
+            connection_limit: 5,
+            valid_until: Some("2025-12-31".to_string()),
+            member_of: vec![],
+        };
+        let json = serde_json::to_value(&role).unwrap();
+        assert_eq!(json["valid_until"], "2025-12-31");
+        assert_eq!(json["connection_limit"], 5);
+    }
+
+    #[test]
+    fn table_privilege_serializes() {
+        let priv_info = TablePrivilege {
+            grantee: "app_user".to_string(),
+            table_schema: "public".to_string(),
+            table_name: "users".to_string(),
+            privileges: vec!["SELECT".to_string(), "INSERT".to_string()],
+        };
+        let json = serde_json::to_value(&priv_info).unwrap();
+        assert_eq!(json["grantee"], "app_user");
+        assert_eq!(json["privileges"], serde_json::json!(["SELECT", "INSERT"]));
+    }
+
+    #[test]
+    fn row_data_serializes() {
+        let row = RowData {
+            columns: vec!["id".to_string(), "active".to_string()],
+            values: vec![
+                serde_json::Value::Number(42.into()),
+                serde_json::Value::Bool(true),
+            ],
+        };
+        let json = serde_json::to_value(&row).unwrap();
+        assert_eq!(json["columns"], serde_json::json!(["id", "active"]));
+        assert_eq!(json["values"][0], 42);
+        assert_eq!(json["values"][1], true);
+    }
+
+    #[test]
+    fn row_data_handles_null_values() {
+        let row = RowData {
+            columns: vec!["id".to_string(), "name".to_string()],
+            values: vec![
+                serde_json::Value::Number(1.into()),
+                serde_json::Value::Null,
+            ],
+        };
+        let json = serde_json::to_value(&row).unwrap();
+        assert!(json["values"][1].is_null());
+    }
+
+    #[tokio::test]
+    async fn db_state_config_can_be_set_and_cleared() {
+        let state = DbState::new();
+
+        {
+            let mut config = state.config.lock().await;
+            *config = Some(sample_config());
+        }
+
+        {
+            let config = state.config.lock().await;
+            assert!(config.is_some());
+            assert_eq!(config.as_ref().unwrap().host, "localhost");
+        }
+
+        {
+            let mut config = state.config.lock().await;
+            *config = None;
+        }
+
+        {
+            let config = state.config.lock().await;
+            assert!(config.is_none());
+        }
+    }
+
+    #[tokio::test]
+    async fn db_state_client_starts_none_and_can_be_cleared() {
+        let state = DbState::new();
+
+        let client = state.client.lock().await;
+        assert!(client.is_none());
+        drop(client);
+
+        // Clearing an already-None client should work fine
+        let mut client = state.client.lock().await;
+        *client = None;
+        assert!(client.is_none());
+    }
+
+    #[test]
+    fn connection_config_clone() {
+        let config = sample_config();
+        let cloned = config.clone();
+        assert_eq!(config.host, cloned.host);
+        assert_eq!(config.port, cloned.port);
+        assert_eq!(config.database, cloned.database);
+        assert_eq!(config.username, cloned.username);
+        assert_eq!(config.password, cloned.password);
+    }
+
+    #[test]
+    fn connection_config_debug_format() {
+        let config = sample_config();
+        let debug = format!("{:?}", config);
+        assert!(debug.contains("ConnectionConfig"));
+        assert!(debug.contains("localhost"));
+    }
+
+    #[test]
+    fn foreign_key_info_clone() {
+        let fk = ForeignKeyInfo {
+            column_name: "user_id".to_string(),
+            foreign_table_schema: "public".to_string(),
+            foreign_table_name: "users".to_string(),
+            foreign_column_name: "id".to_string(),
+        };
+        let cloned = fk.clone();
+        assert_eq!(fk.column_name, cloned.column_name);
+        assert_eq!(fk.foreign_table_name, cloned.foreign_table_name);
+    }
+
+    #[test]
+    fn index_info_clone() {
+        let idx = IndexInfo {
+            index_name: "pk".to_string(),
+            table_schema: "public".to_string(),
+            table_name: "t".to_string(),
+            columns: vec!["id".to_string()],
+            is_unique: true,
+            is_primary: true,
+            index_type: "btree".to_string(),
+            size_bytes: 0,
+        };
+        let cloned = idx.clone();
+        assert_eq!(idx.index_name, cloned.index_name);
+        assert_eq!(idx.columns, cloned.columns);
+    }
 }

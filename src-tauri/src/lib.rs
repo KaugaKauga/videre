@@ -1,4 +1,4 @@
-mod db;
+pub mod db;
 
 use db::DbState;
 
