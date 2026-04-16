@@ -207,14 +207,12 @@ pub async fn get_table_data(
             let offset = offset.unwrap_or(0);
 
             // Get column information
-            let column_query = format!(
-                "SELECT column_name FROM information_schema.columns
+            let column_query = "SELECT column_name FROM information_schema.columns
                  WHERE table_schema = $1 AND table_name = $2
-                 ORDER BY ordinal_position"
-            );
+                 ORDER BY ordinal_position";
 
             let columns: Vec<String> =
-                match client.query(&column_query, &[&schema, &table_name]).await {
+                match client.query(column_query, &[&schema, &table_name]).await {
                     Ok(rows) => rows.iter().map(|row| row.get(0)).collect(),
                     Err(e) => return Err(format!("Failed to fetch columns: {}", e)),
                 };
@@ -361,14 +359,12 @@ pub async fn get_row_by_pk(
     match client_lock.as_ref() {
         Some(client) => {
             // Get column information
-            let column_query = format!(
-                "SELECT column_name FROM information_schema.columns
+            let column_query = "SELECT column_name FROM information_schema.columns
                  WHERE table_schema = $1 AND table_name = $2
-                 ORDER BY ordinal_position"
-            );
+                 ORDER BY ordinal_position";
 
             let columns: Vec<String> =
-                match client.query(&column_query, &[&schema, &table_name]).await {
+                match client.query(column_query, &[&schema, &table_name]).await {
                     Ok(rows) => rows.iter().map(|row| row.get(0)).collect(),
                     Err(e) => return Err(format!("Failed to fetch columns: {}", e)),
                 };

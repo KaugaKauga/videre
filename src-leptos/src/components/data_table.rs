@@ -370,7 +370,6 @@ pub fn DataTable(
                                             .into_any()
                                         } else if let Some(fk) = fk_info {
                                             // FK cell — render as a clickable link
-                                            let fk_click = fk_click;
                                             view! {
                                                 <td class="data-table-td">
                                                     <button
