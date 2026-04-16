@@ -64,6 +64,174 @@ fn format_value(val: &serde_json::Value) -> String {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use std::cmp::Ordering;
+
+    // -- compare_values -----------------------------------------------------
+
+    #[test]
+    fn compare_null_with_null_is_equal() {
+        assert_eq!(compare_values(&json!(null), &json!(null)), Ordering::Equal);
+    }
+
+    #[test]
+    fn compare_null_sorts_last() {
+        // null > non-null
+        assert_eq!(compare_values(&json!(null), &json!(1)), Ordering::Greater);
+        assert_eq!(compare_values(&json!(1), &json!(null)), Ordering::Less);
+        assert_eq!(compare_values(&json!(null), &json!("a")), Ordering::Greater);
+    }
+
+    #[test]
+    fn compare_numbers() {
+        assert_eq!(compare_values(&json!(1), &json!(2)), Ordering::Less);
+        assert_eq!(compare_values(&json!(2), &json!(1)), Ordering::Greater);
+        assert_eq!(compare_values(&json!(42), &json!(42)), Ordering::Equal);
+    }
+
+    #[test]
+    fn compare_floats() {
+        assert_eq!(compare_values(&json!(1.5), &json!(2.5)), Ordering::Less);
+        assert_eq!(compare_values(&json!(3.14), &json!(3.14)), Ordering::Equal);
+    }
+
+    #[test]
+    fn compare_strings() {
+        assert_eq!(compare_values(&json!("alpha"), &json!("beta")), Ordering::Less);
+        assert_eq!(compare_values(&json!("z"), &json!("a")), Ordering::Greater);
+        assert_eq!(compare_values(&json!("same"), &json!("same")), Ordering::Equal);
+    }
+
+    #[test]
+    fn compare_bools() {
+        assert_eq!(compare_values(&json!(false), &json!(true)), Ordering::Less);
+        assert_eq!(compare_values(&json!(true), &json!(false)), Ordering::Greater);
+        assert_eq!(compare_values(&json!(true), &json!(true)), Ordering::Equal);
+    }
+
+    #[test]
+    fn compare_mixed_types_uses_to_string() {
+        // array vs array falls through to to_string comparison
+        let a = json!([1, 2]);
+        let b = json!([3, 4]);
+        let result = compare_values(&a, &b);
+        assert_eq!(result, a.to_string().cmp(&b.to_string()));
+    }
+
+    // -- sort_rows ----------------------------------------------------------
+
+    #[test]
+    fn sort_rows_ascending() {
+        let rows = vec![
+            vec![json!(3), json!("c")],
+            vec![json!(1), json!("a")],
+            vec![json!(2), json!("b")],
+        ];
+        let sorted = sort_rows(&rows, 0, SortDir::Asc);
+        assert_eq!(sorted[0][0], json!(1));
+        assert_eq!(sorted[1][0], json!(2));
+        assert_eq!(sorted[2][0], json!(3));
+    }
+
+    #[test]
+    fn sort_rows_descending() {
+        let rows = vec![
+            vec![json!(1), json!("a")],
+            vec![json!(3), json!("c")],
+            vec![json!(2), json!("b")],
+        ];
+        let sorted = sort_rows(&rows, 0, SortDir::Desc);
+        assert_eq!(sorted[0][0], json!(3));
+        assert_eq!(sorted[1][0], json!(2));
+        assert_eq!(sorted[2][0], json!(1));
+    }
+
+    #[test]
+    fn sort_rows_by_string_column() {
+        let rows = vec![
+            vec![json!(1), json!("Zeus")],
+            vec![json!(2), json!("Athena")],
+            vec![json!(3), json!("Hera")],
+        ];
+        let sorted = sort_rows(&rows, 1, SortDir::Asc);
+        assert_eq!(sorted[0][1], json!("Athena"));
+        assert_eq!(sorted[1][1], json!("Hera"));
+        assert_eq!(sorted[2][1], json!("Zeus"));
+    }
+
+    #[test]
+    fn sort_rows_nulls_sort_last_ascending() {
+        let rows = vec![
+            vec![json!(null)],
+            vec![json!(1)],
+            vec![json!(2)],
+        ];
+        let sorted = sort_rows(&rows, 0, SortDir::Asc);
+        assert_eq!(sorted[0][0], json!(1));
+        assert_eq!(sorted[1][0], json!(2));
+        assert!(sorted[2][0].is_null());
+    }
+
+    #[test]
+    fn sort_rows_empty_input() {
+        let rows: Vec<Vec<serde_json::Value>> = vec![];
+        let sorted = sort_rows(&rows, 0, SortDir::Asc);
+        assert!(sorted.is_empty());
+    }
+
+    #[test]
+    fn sort_rows_does_not_mutate_original() {
+        let rows = vec![
+            vec![json!(2)],
+            vec![json!(1)],
+        ];
+        let _ = sort_rows(&rows, 0, SortDir::Asc);
+        assert_eq!(rows[0][0], json!(2));
+        assert_eq!(rows[1][0], json!(1));
+    }
+
+    // -- format_value -------------------------------------------------------
+
+    #[test]
+    fn format_null_returns_empty() {
+        assert_eq!(format_value(&json!(null)), "");
+    }
+
+    #[test]
+    fn format_string() {
+        assert_eq!(format_value(&json!("hello")), "hello");
+    }
+
+    #[test]
+    fn format_number() {
+        assert_eq!(format_value(&json!(42)), "42");
+        assert_eq!(format_value(&json!(3.14)), "3.14");
+    }
+
+    #[test]
+    fn format_bool() {
+        assert_eq!(format_value(&json!(true)), "true");
+        assert_eq!(format_value(&json!(false)), "false");
+    }
+
+    #[test]
+    fn format_array_uses_to_string() {
+        let val = json!([1, 2, 3]);
+        let formatted = format_value(&val);
+        assert_eq!(formatted, val.to_string());
+    }
+
+    #[test]
+    fn format_object_uses_to_string() {
+        let val = json!({"key": "value"});
+        let formatted = format_value(&val);
+        assert_eq!(formatted, val.to_string());
+    }
+}
+
 // ---------------------------------------------------------------------------
 // DataTable component
 // ---------------------------------------------------------------------------
