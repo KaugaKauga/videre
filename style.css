@@ -559,14 +559,12 @@ small,
     transition: background-color var(--transition-speed) ease;
     background: var(--card);
     flex-shrink: 0;
-    margin-bottom: -1px;
 }
 .tab:hover {
     background: var(--muted);
 }
 .tab.active {
     background: var(--background);
-    border-bottom: 1px solid var(--background);
 }
 .tab-label {
     font-size: 0.8125rem;
@@ -1721,10 +1719,17 @@ kbd {
 /*    Bold bottom rule; the active tab's indicator becomes a vivid red.     */
 
 .swiss .tab-bar {
+    border-bottom: none;
+}
+.swiss .tab-bar::after {
+    content: "";
+    flex: 1;
+    align-self: stretch;
     border-bottom: 1px solid var(--border);
 }
 .swiss .tab {
-    border-right-color: oklch(from var(--border) l c h / 0.45);
+    border-right-color: oklch(from var(--border) l c h / 0.35);
+    border-bottom: 1px solid var(--border);
     transition: none;
 }
 .swiss .tab:hover {
@@ -1752,7 +1757,7 @@ kbd {
 /* Active tab: merge into content, persistent red underline */
 .swiss .tab.active {
     background: var(--background);
-    border-bottom: 1px solid var(--background);
+    border-bottom-color: var(--background);
 }
 .swiss .tab.active::after {
     transform: scaleX(1);
