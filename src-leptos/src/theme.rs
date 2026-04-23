@@ -3,8 +3,6 @@
 //! Mirrors the React `lib/theme.ts` — reads/writes localStorage and toggles
 //! CSS classes on `<html>` to switch between themes and light/dark mode.
 
-
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -15,6 +13,7 @@ pub enum ThemeName {
     AmethystHaze,
     SolarDusk,
     Nature,
+    Swiss,
 }
 
 impl ThemeName {
@@ -23,6 +22,7 @@ impl ThemeName {
             Self::AmethystHaze => "amethyst-haze",
             Self::SolarDusk => "solar-dusk",
             Self::Nature => "nature",
+            Self::Swiss => "swiss",
         }
     }
 
@@ -30,17 +30,24 @@ impl ThemeName {
         match s {
             "solar-dusk" => Self::SolarDusk,
             "nature" => Self::Nature,
+            "swiss" => Self::Swiss,
             _ => Self::AmethystHaze,
         }
     }
 
-    pub const ALL: [ThemeName; 3] = [Self::AmethystHaze, Self::SolarDusk, Self::Nature];
+    pub const ALL: [ThemeName; 4] = [
+        Self::AmethystHaze,
+        Self::SolarDusk,
+        Self::Nature,
+        Self::Swiss,
+    ];
 
     pub fn display_name(self) -> &'static str {
         match self {
             Self::AmethystHaze => "Amethyst Haze",
             Self::SolarDusk => "Solar Dusk",
             Self::Nature => "Nature",
+            Self::Swiss => "Swiss",
         }
     }
 
@@ -49,6 +56,7 @@ impl ThemeName {
             Self::AmethystHaze => "Purple-tinted elegance",
             Self::SolarDusk => "Warm sunset tones",
             Self::Nature => "Fresh green palette",
+            Self::Swiss => "Precision engineering",
         }
     }
 }
