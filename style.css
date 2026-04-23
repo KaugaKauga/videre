@@ -1736,22 +1736,23 @@ kbd {
     background: transparent;
 }
 .swiss .tab-label {
+    position: relative;
     letter-spacing: 0.01em;
 }
-/* Red underline slides in on hover — mirrors sidebar marker animation */
-.swiss .tab::after {
+/* Red underline slides in on hover — scoped to label text width */
+.swiss .tab-label::after {
     content: "";
     position: absolute;
-    bottom: 0;
-    left: 1rem;
-    right: 1rem;
+    bottom: -6px;
+    left: 0;
+    right: 0;
     height: 2px;
     background: var(--primary);
     transform: scaleX(0);
     transform-origin: center;
     transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.swiss .tab:hover::after {
+.swiss .tab:hover .tab-label::after {
     transform: scaleX(1);
 }
 /* Active tab: merge into content, persistent red underline */
@@ -1759,7 +1760,7 @@ kbd {
     background: var(--background);
     border-bottom-color: var(--background);
 }
-.swiss .tab.active::after {
+.swiss .tab.active .tab-label::after {
     transform: scaleX(1);
 }
 .swiss .tab.active .tab-label {
