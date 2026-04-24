@@ -58,8 +58,10 @@ pub fn Sidebar() -> impl IntoView {
                                     let name = table.name.clone();
                                     let schema = table.schema.clone();
                                     let display = table.name.clone();
+                                    let tooltip = format!("{}.{}", table.schema, table.name);
                                     view! {
                                         <button class="sidebar-menu-button"
+                                            title=tooltip
                                             on:click=move |_| {
                                                 tab_store.open_table_tab(name.clone(), schema.clone());
                                             }

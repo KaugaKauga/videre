@@ -462,8 +462,9 @@ small,
 
 .sidebar {
     position: relative;
-    width: 15rem;
-    min-width: 15rem;
+    /* Grows gently with the UI font scale: ~15rem at Normal, ~16.5rem at XL. */
+    width: calc(15rem + (var(--fs-ui) - 0.8125rem) * 6);
+    min-width: calc(15rem + (var(--fs-ui) - 0.8125rem) * 6);
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -530,6 +531,8 @@ small,
     align-items: center;
     gap: 0.5rem;
     width: 100%;
+    min-width: 0;
+    overflow: hidden;
     padding: 0.375rem 0.5rem;
     font-size: var(--fs-ui);
     font-weight: 400;
@@ -553,6 +556,14 @@ small,
     flex-shrink: 0;
     color: var(--muted-foreground);
     transition: color var(--transition-speed) ease;
+}
+.sidebar-menu-button > span {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
 }
 .sidebar-loading {
     display: flex;
