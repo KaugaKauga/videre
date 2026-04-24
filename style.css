@@ -1347,11 +1347,14 @@ kbd {
 }
 .priv-row {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--border);
+}
+.priv-row > .mono {
+    overflow-wrap: anywhere;
 }
 .priv-row:last-child {
     border-bottom: none;
@@ -2294,20 +2297,38 @@ kbd {
         0 0 8px oklch(from var(--primary) l c h / 0.25);
 }
 .cassette-futurism h1 {
-    font-size: 1.4rem;
+    font-size: calc(var(--fs-ui) * 1.7);
     letter-spacing: 0.12em;
 }
 .cassette-futurism h2 {
-    font-size: 1.15rem;
+    font-size: calc(var(--fs-ui) * 1.4);
     letter-spacing: 0.1em;
 }
 .cassette-futurism h3 {
-    font-size: 0.95rem;
+    font-size: calc(var(--fs-ui) * 1.15);
     letter-spacing: 0.08em;
 }
 .cassette-futurism h4 {
-    font-size: 0.82rem;
+    font-size: var(--fs-ui);
     letter-spacing: 0.08em;
+}
+
+/*    Utility classes — scope them to --fs-ui so they scale inside cassette. */
+.cassette-futurism .text-sm {
+    font-size: var(--fs-ui);
+}
+.cassette-futurism .text-xs {
+    font-size: var(--fs-ui-sm);
+}
+.cassette-futurism .mono {
+    font-size: var(--fs-ui);
+}
+/*    Role drawer containers: children are plain spans that inherit,
+      so setting font-size on the wrapper cascades correctly.              */
+.cassette-futurism .role-prop,
+.cassette-futurism .priv-row,
+.cassette-futurism .role-detail-section {
+    font-size: var(--fs-ui);
 }
 .cassette-futurism p,
 .cassette-futurism span,
