@@ -322,6 +322,52 @@ button {
     --error-bg: oklch(0.592 0.205 26.1 / 0.08);
 }
 
+/* ── Nocturne · single variant ───────────────────────────────────────────── */
+/*    A refined dark theme.  Deep ink base with a single warm amber accent.
+      Display serif (Apple's "New York", Charter / Iowan / Georgia fallback).
+      No light companion — the atmosphere IS the theme.                      */
+
+.nocturne {
+    --background: oklch(0.148 0.018 265);
+    --foreground: oklch(0.91 0.014 85);
+    --card: oklch(0.178 0.02 265);
+    --card-foreground: oklch(0.91 0.014 85);
+    --primary: oklch(0.795 0.135 72);
+    --primary-foreground: oklch(0.148 0.018 265);
+    --secondary: oklch(0.225 0.02 265);
+    --secondary-foreground: oklch(0.86 0.014 80);
+    --muted: oklch(0.2 0.018 265);
+    --muted-foreground: oklch(0.62 0.014 80);
+    --accent: oklch(0.795 0.135 72);
+    --accent-foreground: oklch(0.148 0.018 265);
+    --destructive: oklch(0.7 0.17 22);
+    --destructive-foreground: oklch(0.148 0.018 265);
+    --border: oklch(0.258 0.02 265);
+    --input: oklch(0.19 0.018 265);
+    --ring: oklch(0.795 0.135 72);
+    --radius: 6px;
+    --sidebar: oklch(0.122 0.018 265);
+    --sidebar-foreground: oklch(0.91 0.014 85);
+    --sidebar-border: oklch(0.215 0.02 265);
+    --shadow-card:
+        0 1px 0 oklch(1 0 0 / 0.03) inset,
+        0 6px 24px oklch(0 0 0 / 0.35);
+    --font-sans:
+        -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-sans-serif,
+        "Helvetica Neue", Arial, sans-serif;
+    --font-serif:
+        "New York", "PP Editorial New", "Iowan Old Style", Charter,
+        ui-serif, Georgia, serif;
+    --font-mono:
+        "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Monaco, monospace;
+    --transition-speed: 0.18s;
+
+    --success: oklch(0.72 0.14 155);
+    --success-bg: oklch(0.72 0.14 155 / 0.1);
+    --error: oklch(0.7 0.17 22);
+    --error-bg: oklch(0.7 0.17 22 / 0.1);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    §3  BASE
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -2124,6 +2170,563 @@ kbd {
 }
 .swiss .priv-row {
     border-bottom-color: oklch(from var(--border) l c h / 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ═══════════════════════════════════════════════════════════════════════════
+
+   §23  NOCTURNE — STRUCTURAL OVERRIDES
+
+   Everything below is scoped to `.nocturne` on <html>.
+   A committed dark theme: ink base, warm ivory text, single amber accent.
+   Display serif for typographic gravitas; hairlines and soft glows instead
+   of hard borders; motion is slow and atmospheric.
+
+   Reference mood: Linear after dark, Arc, NYT Games, Teenage Engineering.
+
+   ═══════════════════════════════════════════════════════════════════════════
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 23 a · Base Atmosphere ──────────────────────────────────────────────── */
+/*    A single warm radial wash anchored top-left gives the ink depth.
+      Faint film-grain overlay breaks up flat surfaces.                      */
+
+.nocturne body {
+    background:
+        radial-gradient(
+            900px 600px at 8% -10%,
+            oklch(from var(--primary) l c h / 0.07),
+            transparent 60%
+        ),
+        var(--background);
+}
+.nocturne body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ── 23 b · Selection & Focus ────────────────────────────────────────────── */
+
+.nocturne ::selection {
+    background: oklch(from var(--primary) l c h / 0.28);
+    color: oklch(0.98 0.01 85);
+}
+.nocturne *:focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 1px oklch(from var(--primary) l c h / 0.55),
+        0 0 0 4px oklch(from var(--primary) l c h / 0.14);
+    border-radius: calc(var(--radius) - 2px);
+}
+
+/* ── 23 c · Scrollbars ───────────────────────────────────────────────────── */
+/*    Near-invisible until you reach for them.                               */
+
+.nocturne ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+.nocturne ::-webkit-scrollbar-track {
+    background: transparent;
+}
+.nocturne ::-webkit-scrollbar-thumb {
+    background: oklch(from var(--foreground) l c h / 0.08);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+.nocturne ::-webkit-scrollbar-thumb:hover {
+    background: oklch(from var(--primary) l c h / 0.5);
+    background-clip: padding-box;
+}
+
+/* ── 23 d · Typography ───────────────────────────────────────────────────── */
+/*    Display serif for headings; body remains sans for legibility.          */
+
+.nocturne h1,
+.nocturne h2,
+.nocturne h3 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    font-feature-settings: "ss01", "liga", "dlig";
+}
+.nocturne h1 {
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.025em;
+}
+.nocturne .sidebar-title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-style: italic;
+    letter-spacing: -0.015em;
+    font-size: 1.05rem;
+}
+.nocturne .sidebar-group-label,
+.nocturne .recents-heading,
+.nocturne .roles-section-title,
+.nocturne .shortcuts-title {
+    font-family: var(--font-sans);
+    font-size: var(--fs-ui-sm);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: oklch(from var(--muted-foreground) l c h / 0.85);
+}
+
+/* ── 23 e · Sidebar ──────────────────────────────────────────────────────── */
+/*    Quiet gradient body.  An amber dot fades in on hover — a star
+      turning on — instead of a sliding tick mark.                           */
+
+.nocturne .sidebar {
+    background:
+        linear-gradient(
+            180deg,
+            oklch(from var(--sidebar) l c h) 0%,
+            oklch(from var(--sidebar) calc(l - 0.012) c h) 100%
+        );
+    border-right: 1px solid oklch(from var(--sidebar-border) l c h / 0.6);
+}
+.nocturne .sidebar-menu-button {
+    border-radius: var(--radius);
+    transition:
+        background-color 0.22s ease,
+        color 0.22s ease;
+    position: relative;
+}
+.nocturne .sidebar-menu-button::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    transform: translateY(-50%) scale(0);
+    background: var(--primary);
+    box-shadow: 0 0 8px oklch(from var(--primary) l c h / 0.7);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.nocturne .sidebar-menu-button:hover::before {
+    transform: translateY(-50%) scale(1);
+}
+.nocturne .sidebar-menu-button:hover {
+    background: oklch(from var(--primary) l c h / 0.05);
+    color: oklch(from var(--foreground) l c h);
+}
+.nocturne .sidebar-menu-button:hover svg {
+    color: var(--primary);
+}
+.nocturne .sidebar-bottom-section {
+    border-top: 1px solid oklch(from var(--sidebar-border) l c h / 0.6);
+}
+
+/* ── 23 f · Tab Bar ──────────────────────────────────────────────────────── */
+
+.nocturne .tab-bar {
+    background: oklch(from var(--background) calc(l - 0.012) c h);
+    border-bottom: 1px solid oklch(from var(--border) l c h / 0.5);
+}
+.nocturne .tab {
+    border-right: 1px solid oklch(from var(--border) l c h / 0.3);
+    transition:
+        background-color 0.22s ease,
+        color 0.22s ease;
+}
+.nocturne .tab:hover {
+    background: oklch(from var(--foreground) l c h / 0.025);
+}
+.nocturne .tab.active {
+    background: var(--background);
+    color: oklch(from var(--foreground) l c h);
+}
+.nocturne .tab-indicator {
+    background: var(--primary);
+    box-shadow: 0 0 10px oklch(from var(--primary) l c h / 0.45);
+    height: 1.5px;
+}
+.nocturne .tab-close:hover {
+    background: oklch(from var(--primary) l c h / 0.12);
+    color: var(--primary);
+}
+
+/* ── 23 g · Cards ────────────────────────────────────────────────────────── */
+/*    Soft shadow + 1px inset highlight (top edge) mimics a light source.    */
+
+.nocturne .card,
+.nocturne .settings-card,
+.nocturne .connection-card,
+.nocturne .shortcuts-box {
+    background: var(--card);
+    border: 1px solid oklch(from var(--border) l c h / 0.6);
+    border-radius: var(--radius);
+    box-shadow:
+        0 1px 0 oklch(1 0 0 / 0.04) inset,
+        0 8px 32px oklch(0 0 0 / 0.35);
+}
+
+/* ── 23 h · Inputs ───────────────────────────────────────────────────────── */
+
+.nocturne input[type="text"],
+.nocturne input[type="password"],
+.nocturne input[type="number"],
+.nocturne input[type="email"] {
+    background: oklch(from var(--input) l c h);
+    border: 1px solid oklch(from var(--border) l c h / 0.7);
+    border-radius: var(--radius);
+    height: 2.5rem;
+    transition:
+        border-color 0.18s ease,
+        box-shadow 0.18s ease;
+}
+.nocturne input:focus {
+    border-color: oklch(from var(--primary) l c h / 0.7);
+    box-shadow:
+        0 0 0 3px oklch(from var(--primary) l c h / 0.14),
+        0 0 16px oklch(from var(--primary) l c h / 0.12);
+    outline: none;
+}
+.nocturne label {
+    font-family: var(--font-sans);
+    font-size: var(--fs-ui-sm);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: oklch(from var(--muted-foreground) l c h / 0.9);
+}
+
+/* ── 23 i · Buttons ──────────────────────────────────────────────────────── */
+
+.nocturne .btn {
+    border-radius: var(--radius);
+    transition:
+        background-color 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+.nocturne .btn-primary {
+    background: linear-gradient(
+        180deg,
+        oklch(from var(--primary) calc(l + 0.03) c h),
+        oklch(from var(--primary) calc(l - 0.04) c h)
+    );
+    color: var(--primary-foreground);
+    border: 1px solid oklch(from var(--primary) calc(l - 0.08) c h);
+    box-shadow:
+        0 1px 0 oklch(1 0 0 / 0.14) inset,
+        0 2px 8px oklch(from var(--primary) l c h / 0.2);
+}
+.nocturne .btn-primary:hover {
+    box-shadow:
+        0 1px 0 oklch(1 0 0 / 0.18) inset,
+        0 4px 18px oklch(from var(--primary) l c h / 0.35);
+    transform: translateY(-1px);
+}
+.nocturne .btn-primary:active {
+    transform: translateY(0);
+}
+.nocturne .btn-secondary {
+    background: oklch(from var(--secondary) l c h);
+    border: 1px solid oklch(from var(--border) l c h / 0.8);
+}
+.nocturne .btn-secondary:hover {
+    background: oklch(from var(--secondary) calc(l + 0.03) c h);
+    border-color: oklch(from var(--primary) l c h / 0.45);
+}
+.nocturne .btn-ghost:hover {
+    background: oklch(from var(--foreground) l c h / 0.04);
+}
+
+/* ── 23 j · Data Table ───────────────────────────────────────────────────── */
+
+.nocturne .data-table-th {
+    background: oklch(from var(--background) calc(l + 0.012) c h);
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: oklch(from var(--muted-foreground) l c h / 0.9);
+    border-bottom: 1px solid oklch(from var(--border) l c h / 0.6);
+}
+.nocturne .data-table-th:hover {
+    color: var(--primary);
+}
+.nocturne .data-table-row {
+    border-bottom: 1px solid oklch(from var(--border) l c h / 0.3);
+    transition: background-color 0.14s ease;
+}
+.nocturne .data-table-row:hover {
+    background: oklch(from var(--primary) l c h / 0.04);
+}
+.nocturne .data-table-td {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-feature-settings: "ss01", "zero";
+}
+.nocturne .fk-link {
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px dotted oklch(from var(--primary) l c h / 0.45);
+    transition:
+        border-bottom-color 0.18s ease,
+        text-shadow 0.18s ease;
+}
+.nocturne .fk-link:hover {
+    border-bottom-color: var(--primary);
+    text-shadow: 0 0 10px oklch(from var(--primary) l c h / 0.3);
+}
+.nocturne .null-value {
+    color: oklch(from var(--muted-foreground) l c h / 0.55);
+    font-style: italic;
+    font-family: var(--font-serif);
+}
+.nocturne .sort-indicator {
+    color: var(--primary);
+}
+
+/* ── 23 k · Page Headers & Titles ────────────────────────────────────────── */
+
+.nocturne .table-page-header,
+.nocturne .table-page-footer {
+    border-color: oklch(from var(--border) l c h / 0.5);
+    backdrop-filter: blur(6px);
+    background: oklch(from var(--background) l c h / 0.7);
+}
+.nocturne .table-page-title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+}
+.nocturne .connection-title-row h1 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-style: italic;
+    font-size: clamp(1.75rem, 1.4rem + 1vw, 2.4rem);
+    letter-spacing: -0.028em;
+}
+.nocturne .settings-header h2 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-style: italic;
+    font-size: 2rem;
+    letter-spacing: -0.025em;
+}
+
+/* ── 23 l · Empty State ──────────────────────────────────────────────────── */
+/*    A soft amber aura radiates from center — the room is not empty,
+      just waiting.                                                          */
+
+.nocturne .empty-state {
+    position: relative;
+    overflow: hidden;
+}
+.nocturne .empty-state::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 420px;
+    height: 420px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(
+        circle at center,
+        oklch(from var(--primary) l c h / 0.08),
+        transparent 70%
+    );
+    pointer-events: none;
+    z-index: 0;
+}
+.nocturne .empty-state-inner {
+    position: relative;
+    z-index: 1;
+}
+.nocturne .empty-state h3 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-style: italic;
+}
+
+/* ── 23 m · Keyboard & Shortcuts ─────────────────────────────────────────── */
+
+.nocturne kbd {
+    font-family: var(--font-mono);
+    background: oklch(from var(--secondary) l c h);
+    border: 1px solid oklch(from var(--border) l c h / 0.8);
+    border-radius: 4px;
+    box-shadow:
+        0 1px 0 oklch(1 0 0 / 0.04) inset,
+        0 1px 0 oklch(0 0 0 / 0.4);
+    padding: 2px 6px;
+    font-size: 0.72rem;
+}
+
+/* ── 23 n · Badges ───────────────────────────────────────────────────────── */
+
+.nocturne .badge {
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border: 1px solid oklch(from var(--border) l c h / 0.6);
+    background: oklch(from var(--card) l c h / 0.6);
+}
+.nocturne .badge-success {
+    color: var(--success);
+    border-color: oklch(from var(--success) l c h / 0.4);
+    background: oklch(from var(--success) l c h / 0.08);
+}
+.nocturne .badge-danger {
+    color: var(--error);
+    border-color: oklch(from var(--error) l c h / 0.4);
+    background: oklch(from var(--error) l c h / 0.08);
+}
+.nocturne .badge-info {
+    color: var(--primary);
+    border-color: oklch(from var(--primary) l c h / 0.4);
+    background: oklch(from var(--primary) l c h / 0.08);
+}
+.nocturne .badge-warn {
+    color: oklch(0.82 0.12 85);
+    border-color: oklch(0.82 0.12 85 / 0.4);
+    background: oklch(0.82 0.12 85 / 0.08);
+}
+
+/* ── 23 o · Settings & Theme Cards ───────────────────────────────────────── */
+
+.nocturne .theme-card,
+.nocturne .mode-btn {
+    background: oklch(from var(--card) l c h);
+    border: 1px solid oklch(from var(--border) l c h / 0.6);
+    border-radius: var(--radius);
+    transition:
+        border-color 0.22s ease,
+        box-shadow 0.22s ease;
+}
+.nocturne .theme-card:hover,
+.nocturne .mode-btn:hover {
+    border-color: oklch(from var(--primary) l c h / 0.45);
+    box-shadow:
+        0 0 0 1px oklch(from var(--primary) l c h / 0.15),
+        0 8px 24px oklch(0 0 0 / 0.25);
+}
+.nocturne .theme-card.active,
+.nocturne .mode-btn.active {
+    border-color: oklch(from var(--primary) l c h / 0.6);
+    box-shadow:
+        0 0 0 1px oklch(from var(--primary) l c h / 0.3),
+        0 0 24px oklch(from var(--primary) l c h / 0.1) inset;
+}
+.nocturne .theme-swatch {
+    border-radius: 50%;
+    border: 1px solid oklch(from var(--foreground) l c h / 0.12);
+}
+.nocturne .theme-check-dot {
+    background: var(--primary);
+    box-shadow: 0 0 8px oklch(from var(--primary) l c h / 0.6);
+}
+.nocturne .mode-btn h4,
+.nocturne .theme-card h4 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 1.05rem;
+    letter-spacing: -0.015em;
+}
+
+/* ── 23 p · Row Detail ───────────────────────────────────────────────────── */
+
+.nocturne .row-detail-panel {
+    backdrop-filter: blur(12px);
+    background: oklch(from var(--card) l c h / 0.92);
+    border-left: 1px solid oklch(from var(--border) l c h / 0.6);
+    box-shadow: -12px 0 40px oklch(0 0 0 / 0.4);
+}
+.nocturne .row-detail-header h3 {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+}
+.nocturne .row-detail-label {
+    font-family: var(--font-sans);
+    font-size: var(--fs-ui-sm);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: oklch(from var(--muted-foreground) l c h / 0.75);
+}
+.nocturne .row-detail-backdrop.open {
+    background: oklch(0 0 0 / 0.55);
+    backdrop-filter: blur(2px);
+}
+
+/* ── 23 q · JSON & Mono Content ──────────────────────────────────────────── */
+
+.nocturne .json-value {
+    font-family: var(--font-mono);
+    background: oklch(from var(--muted) l c h / 0.5);
+    border-radius: var(--radius);
+}
+.nocturne .mono {
+    font-feature-settings: "zero", "ss01";
+}
+
+/* ── 23 r · Status Messages ──────────────────────────────────────────────── */
+
+.nocturne .status-msg {
+    border-radius: var(--radius);
+    border-left: 2px solid transparent;
+}
+.nocturne .status-success {
+    border-left-color: var(--success);
+}
+.nocturne .status-error {
+    border-left-color: var(--error);
+}
+.nocturne .table-page-error {
+    border-radius: var(--radius);
+    border-left: 2px solid var(--error);
+}
+
+/* ── 23 s · Content Entrance Animation ───────────────────────────────────── */
+/*    Slower than Swiss — atmospheric, not mechanical.                       */
+
+@keyframes nocturne-enter {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+        filter: blur(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
+}
+.nocturne .card-content,
+.nocturne .table-page-body,
+.nocturne .settings-container,
+.nocturne .roles-body,
+.nocturne .connection-card {
+    animation: nocturne-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── 23 t · Priv List & Role Props ───────────────────────────────────────── */
+
+.nocturne .priv-row,
+.nocturne .role-prop {
+    border-bottom-color: oklch(from var(--border) l c h / 0.35);
+}
+.nocturne .role-detail-heading {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-style: italic;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
