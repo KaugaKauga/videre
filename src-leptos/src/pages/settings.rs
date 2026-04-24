@@ -231,6 +231,11 @@ impl ThemeName {
                 "oklch(0.15 0 0)",
                 "oklch(0.948 0 0)",
             ),
+            Self::CassetteFuturism => (
+                "oklch(0.82 0.15 75)",
+                "oklch(0.145 0.008 80)",
+                "oklch(0.68 0.22 25)",
+            ),
         }
     }
 }

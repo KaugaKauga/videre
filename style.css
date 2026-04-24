@@ -322,6 +322,48 @@ button {
     --error-bg: oklch(0.592 0.205 26.1 / 0.08);
 }
 
+/* ── Cassette Futurism · single variant ──────────────────────────────────── */
+/*    The Nostromo / DSKY aesthetic.  70s–80s sci-fi computer interface.
+      Amber phosphor on warm charcoal.  All monospace.  Zero radius.
+      Every character a glyph from a terminal.                              */
+
+.cassette-futurism {
+    --background: oklch(0.145 0.008 80);
+    --foreground: oklch(0.82 0.15 75);
+    --card: oklch(0.175 0.01 80);
+    --card-foreground: oklch(0.82 0.15 75);
+    --primary: oklch(0.82 0.15 75);
+    --primary-foreground: oklch(0.12 0.006 80);
+    --secondary: oklch(0.22 0.012 80);
+    --secondary-foreground: oklch(0.72 0.13 75);
+    --muted: oklch(0.2 0.01 80);
+    --muted-foreground: oklch(0.55 0.1 75);
+    --accent: oklch(0.82 0.15 75);
+    --accent-foreground: oklch(0.12 0.006 80);
+    --destructive: oklch(0.68 0.22 25);
+    --destructive-foreground: oklch(0.12 0.006 80);
+    --border: oklch(0.35 0.1 75);
+    --input: oklch(0.16 0.008 80);
+    --ring: oklch(0.82 0.15 75);
+    --radius: 0;
+    --sidebar: oklch(0.128 0.008 80);
+    --sidebar-foreground: oklch(0.82 0.15 75);
+    --sidebar-border: oklch(0.3 0.08 75);
+    --shadow-card: none;
+    --font-sans:
+        "SF Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo,
+        Monaco, Consolas, monospace;
+    --font-mono:
+        "SF Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo,
+        Monaco, Consolas, monospace;
+    --transition-speed: 0.08s;
+
+    --success: oklch(0.78 0.18 145);
+    --success-bg: oklch(0.78 0.18 145 / 0.1);
+    --error: oklch(0.68 0.22 25);
+    --error-bg: oklch(0.68 0.22 25 / 0.1);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    §3  BASE
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -2124,6 +2166,718 @@ kbd {
 }
 .swiss .priv-row {
     border-bottom-color: oklch(from var(--border) l c h / 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ═══════════════════════════════════════════════════════════════════════════
+
+   §23  CASSETTE FUTURISM — STRUCTURAL OVERRIDES
+
+   Scoped to `.cassette-futurism` on <html>.
+   Reference: Apollo Guidance DSKY, Alien's MU/TH/UR, early CAD stations,
+   OP-1, Braun ET66.  The computer as *machine*, not jewelry.
+
+   Everything monospace.  ALL CAPS chrome.  Amber phosphor on warm charcoal.
+   CRT scanlines overlay.  Bracket framing.  Block-cursor hover states.
+   Zero radius anywhere — this is a terminal.
+
+   ═══════════════════════════════════════════════════════════════════════════
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 23 a · CRT Scanlines & Phosphor Bleed ───────────────────────────────── */
+/*    A fixed overlay of horizontal hairlines over the whole viewport,
+      plus a faint warm vignette that keeps the tube from feeling flat.     */
+
+.cassette-futurism body {
+    background:
+        radial-gradient(
+            1200px 800px at 50% 50%,
+            oklch(from var(--primary) l c h / 0.02),
+            transparent 70%
+        ),
+        var(--background);
+}
+.cassette-futurism body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent 0,
+        transparent 2px,
+        oklch(0 0 0 / 0.18) 2px,
+        oklch(0 0 0 / 0.18) 3px
+    );
+    mix-blend-mode: multiply;
+}
+/*    Soft vignette + faint chromatic fringe around the edges.              */
+.cassette-futurism body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    background: radial-gradient(
+        ellipse at center,
+        transparent 55%,
+        oklch(0 0 0 / 0.35) 100%
+    );
+}
+
+/* ── 23 b · Boot Flicker ─────────────────────────────────────────────────── */
+/*    Very subtle — brief luminance wobble on first paint.                   */
+
+@keyframes cf-boot {
+    0%   { opacity: 0;    filter: brightness(0.2); }
+    8%   { opacity: 1;    filter: brightness(1.8); }
+    12%  { opacity: 0.6;  filter: brightness(0.8); }
+    18%  { opacity: 1;    filter: brightness(1.2); }
+    24%  { opacity: 0.85; filter: brightness(0.95); }
+    100% { opacity: 1;    filter: brightness(1); }
+}
+.cassette-futurism .shell {
+    animation: cf-boot 0.55s steps(24, end) both;
+}
+
+/* ── 23 c · Selection & Focus ────────────────────────────────────────────── */
+
+.cassette-futurism ::selection {
+    background: oklch(from var(--primary) l c h / 0.85);
+    color: var(--background);
+    text-shadow: none;
+}
+.cassette-futurism *:focus-visible {
+    outline: 1px solid var(--primary);
+    outline-offset: 0;
+    box-shadow: 0 0 0 3px oklch(from var(--primary) l c h / 0.18);
+}
+
+/* ── 23 d · Scrollbars ───────────────────────────────────────────────────── */
+/*    Blocky.  Solid.  No curve.                                             */
+
+.cassette-futurism ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+.cassette-futurism ::-webkit-scrollbar-track {
+    background: oklch(from var(--background) calc(l - 0.01) c h);
+    border-left: 1px solid oklch(from var(--border) l c h / 0.4);
+}
+.cassette-futurism ::-webkit-scrollbar-thumb {
+    background: oklch(from var(--primary) l c h / 0.35);
+    border-radius: 0;
+}
+.cassette-futurism ::-webkit-scrollbar-thumb:hover {
+    background: oklch(from var(--primary) l c h / 0.7);
+}
+
+/* ── 23 e · Typography ───────────────────────────────────────────────────── */
+/*    Everything monospace.  Tabular figures.  Phosphor glow on accent.      */
+
+.cassette-futurism {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 0.5px oklch(from var(--foreground) l c h / 0.4);
+}
+.cassette-futurism h1,
+.cassette-futurism h2,
+.cassette-futurism h3,
+.cassette-futurism h4 {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-shadow:
+        0 0 0.5px currentColor,
+        0 0 8px oklch(from var(--primary) l c h / 0.25);
+}
+.cassette-futurism h1 {
+    font-size: 1.4rem;
+    letter-spacing: 0.12em;
+}
+.cassette-futurism h2 {
+    font-size: 1.15rem;
+    letter-spacing: 0.1em;
+}
+.cassette-futurism h3 {
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+}
+.cassette-futurism h4 {
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+}
+.cassette-futurism p,
+.cassette-futurism span,
+.cassette-futurism button,
+.cassette-futurism input,
+.cassette-futurism label {
+    font-family: var(--font-mono);
+}
+
+/*    Bracket-framed section labels:  [ LABEL ]                              */
+.cassette-futurism .sidebar-group-label,
+.cassette-futurism .recents-heading,
+.cassette-futurism .roles-section-title,
+.cassette-futurism .shortcuts-title {
+    font-size: var(--fs-ui-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: oklch(from var(--muted-foreground) l c h);
+}
+.cassette-futurism .sidebar-group-label::before,
+.cassette-futurism .recents-heading::before,
+.cassette-futurism .roles-section-title::before,
+.cassette-futurism .shortcuts-title::before {
+    content: "[ ";
+    color: oklch(from var(--primary) l c h / 0.6);
+}
+.cassette-futurism .sidebar-group-label::after,
+.cassette-futurism .recents-heading::after,
+.cassette-futurism .roles-section-title::after,
+.cassette-futurism .shortcuts-title::after {
+    content: " ]";
+    color: oklch(from var(--primary) l c h / 0.6);
+}
+
+/* ── 23 f · Sidebar ──────────────────────────────────────────────────────── */
+/*    Title bar reads like a terminal header.  Items reveal a block cursor
+      on hover — the row is "selected" by the caret, not highlighted.       */
+
+.cassette-futurism .sidebar {
+    background: var(--sidebar);
+    border-right: 1px solid oklch(from var(--sidebar-border) l c h / 0.8);
+}
+.cassette-futurism .sidebar-title {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.95rem;
+    text-shadow:
+        0 0 0.5px currentColor,
+        0 0 10px oklch(from var(--primary) l c h / 0.35);
+}
+.cassette-futurism .sidebar-menu-button {
+    border-radius: 0;
+    position: relative;
+    padding-left: 1.25rem;
+    transition:
+        background-color 0.08s linear,
+        color 0.08s linear;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.82rem;
+}
+/*    Block cursor that materialises before the label on hover/active       */
+.cassette-futurism .sidebar-menu-button::before {
+    content: "▮";
+    position: absolute;
+    left: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary);
+    opacity: 0;
+    font-size: 0.9em;
+    transition: opacity 0.08s linear;
+    text-shadow: 0 0 8px oklch(from var(--primary) l c h / 0.6);
+}
+.cassette-futurism .sidebar-menu-button:hover::before,
+.cassette-futurism .sidebar-menu-button.active::before {
+    opacity: 1;
+    animation: cf-blink 1.1s steps(2, end) infinite;
+}
+@keyframes cf-blink {
+    50% { opacity: 0.35; }
+}
+.cassette-futurism .sidebar-menu-button:hover {
+    background: oklch(from var(--primary) l c h / 0.08);
+}
+.cassette-futurism .sidebar-menu-button:hover svg,
+.cassette-futurism .sidebar-menu-button.active svg {
+    color: var(--primary);
+}
+.cassette-futurism .sidebar-bottom-section {
+    border-top: 1px solid oklch(from var(--sidebar-border) l c h / 0.8);
+}
+
+/* ── 23 g · Tab Bar ──────────────────────────────────────────────────────── */
+
+.cassette-futurism .tab-bar {
+    background: oklch(from var(--background) calc(l - 0.012) c h);
+    border-bottom: 1px solid oklch(from var(--border) l c h / 0.7);
+}
+.cassette-futurism .tab {
+    border-right: 1px solid oklch(from var(--border) l c h / 0.4);
+    border-radius: 0;
+    transition: background-color 0.08s linear, color 0.08s linear;
+}
+.cassette-futurism .tab-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.78rem;
+}
+.cassette-futurism .tab:hover {
+    background: oklch(from var(--primary) l c h / 0.06);
+}
+.cassette-futurism .tab.active {
+    background: var(--background);
+    color: var(--primary);
+    border-bottom-color: var(--background);
+}
+.cassette-futurism .tab-indicator {
+    background: var(--primary);
+    box-shadow: 0 0 10px oklch(from var(--primary) l c h / 0.7);
+    height: 2px;
+}
+.cassette-futurism .tab-close:hover {
+    background: oklch(from var(--destructive) l c h / 0.25);
+    color: var(--destructive);
+}
+
+/* ── 23 h · Cards ────────────────────────────────────────────────────────── */
+/*    1px amber hairline border, corners marked with tiny plus signs.       */
+
+.cassette-futurism .card,
+.cassette-futurism .settings-card,
+.cassette-futurism .connection-card,
+.cassette-futurism .shortcuts-box,
+.cassette-futurism .row-detail-panel {
+    background: var(--card);
+    border: 1px solid oklch(from var(--border) l c h / 0.7);
+    border-radius: 0;
+    box-shadow: none;
+    position: relative;
+}
+/*    Corner ticks — optional flourish, ASCII style                         */
+.cassette-futurism .settings-card::before,
+.cassette-futurism .settings-card::after,
+.cassette-futurism .connection-card::before,
+.cassette-futurism .connection-card::after {
+    content: "+";
+    position: absolute;
+    color: var(--primary);
+    font-size: 0.7rem;
+    line-height: 1;
+    opacity: 0.6;
+}
+.cassette-futurism .settings-card::before,
+.cassette-futurism .connection-card::before {
+    top: 2px;
+    left: 4px;
+}
+.cassette-futurism .settings-card::after,
+.cassette-futurism .connection-card::after {
+    top: 2px;
+    right: 4px;
+}
+
+/* ── 23 i · Inputs ───────────────────────────────────────────────────────── */
+
+.cassette-futurism input[type="text"],
+.cassette-futurism input[type="password"],
+.cassette-futurism input[type="number"],
+.cassette-futurism input[type="email"] {
+    background: var(--input);
+    border: 1px solid oklch(from var(--border) l c h / 0.8);
+    border-radius: 0;
+    height: 2.375rem;
+    color: var(--foreground);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    letter-spacing: 0.02em;
+    transition: border-color 0.08s linear, box-shadow 0.08s linear;
+    caret-color: var(--primary);
+}
+.cassette-futurism input:focus {
+    border-color: var(--primary);
+    box-shadow:
+        0 0 0 2px oklch(from var(--primary) l c h / 0.2),
+        inset 0 0 12px oklch(from var(--primary) l c h / 0.08);
+    outline: none;
+}
+.cassette-futurism input::placeholder {
+    color: oklch(from var(--muted-foreground) l c h / 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.8em;
+}
+.cassette-futurism label {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: var(--fs-ui-sm);
+    font-weight: 600;
+    color: oklch(from var(--muted-foreground) l c h);
+}
+.cassette-futurism label::before {
+    content: "> ";
+    color: var(--primary);
+}
+
+/* ── 23 j · Buttons ──────────────────────────────────────────────────────── */
+/*    Bracket-framed labels.  Solid amber primary.  Hover inverts.          */
+
+.cassette-futurism .btn {
+    border-radius: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+    font-size: 0.78rem;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.08s linear, color 0.08s linear;
+}
+.cassette-futurism .btn-primary {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border: 1px solid var(--primary);
+    box-shadow: 0 0 16px oklch(from var(--primary) l c h / 0.35);
+}
+.cassette-futurism .btn-primary::before {
+    content: "[ ";
+}
+.cassette-futurism .btn-primary::after {
+    content: " ]";
+}
+.cassette-futurism .btn-primary:hover {
+    background: oklch(from var(--primary) calc(l + 0.05) c h);
+    box-shadow: 0 0 24px oklch(from var(--primary) l c h / 0.55);
+}
+.cassette-futurism .btn-primary:active {
+    background: oklch(from var(--primary) calc(l - 0.1) c h);
+}
+.cassette-futurism .btn-secondary {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid oklch(from var(--primary) l c h / 0.6);
+}
+.cassette-futurism .btn-secondary:hover {
+    background: oklch(from var(--primary) l c h / 0.12);
+    border-color: var(--primary);
+}
+.cassette-futurism .btn-ghost {
+    color: oklch(from var(--foreground) l c h / 0.85);
+}
+.cassette-futurism .btn-ghost:hover {
+    background: oklch(from var(--primary) l c h / 0.1);
+    color: var(--primary);
+}
+
+/* ── 23 k · Data Table ───────────────────────────────────────────────────── */
+/*    This is the core of the theme — it's where the data actually lives.   */
+
+.cassette-futurism .data-table-wrap {
+    border: 1px solid oklch(from var(--border) l c h / 0.5);
+}
+.cassette-futurism .data-table-th {
+    background: oklch(from var(--background) calc(l - 0.015) c h);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--primary);
+    border-bottom: 1px solid oklch(from var(--primary) l c h / 0.4);
+    text-shadow: 0 0 6px oklch(from var(--primary) l c h / 0.3);
+}
+.cassette-futurism .data-table-th:hover {
+    background: oklch(from var(--primary) l c h / 0.08);
+}
+.cassette-futurism .data-table-row {
+    border-bottom: 1px dashed oklch(from var(--border) l c h / 0.35);
+    transition: background-color 0.06s linear;
+}
+.cassette-futurism .data-table-row:hover {
+    background: oklch(from var(--primary) l c h / 0.06);
+}
+.cassette-futurism .data-table-td {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "zero", "ss01";
+}
+.cassette-futurism .fk-link {
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--primary);
+    text-shadow: 0 0 4px oklch(from var(--primary) l c h / 0.4);
+}
+.cassette-futurism .fk-link::before {
+    content: "→ ";
+    opacity: 0.6;
+}
+.cassette-futurism .fk-link:hover {
+    background: oklch(from var(--primary) l c h / 0.15);
+}
+.cassette-futurism .null-value {
+    color: oklch(from var(--muted-foreground) l c h / 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.72rem;
+}
+.cassette-futurism .null-value::before {
+    content: "·· ";
+    opacity: 0.7;
+}
+.cassette-futurism .sort-indicator {
+    color: var(--primary);
+    text-shadow: 0 0 6px oklch(from var(--primary) l c h / 0.5);
+}
+
+/* ── 23 l · Page Headers ─────────────────────────────────────────────────── */
+
+.cassette-futurism .table-page-header,
+.cassette-futurism .table-page-footer {
+    border-color: oklch(from var(--border) l c h / 0.6);
+    background: oklch(from var(--background) l c h / 0.92);
+}
+.cassette-futurism .table-page-title {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+.cassette-futurism .table-page-title::before {
+    content: "◆ ";
+    color: var(--primary);
+    text-shadow: 0 0 8px oklch(from var(--primary) l c h / 0.6);
+}
+.cassette-futurism .connection-title-row h1,
+.cassette-futurism .settings-header h2 {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    text-shadow:
+        0 0 1px currentColor,
+        0 0 14px oklch(from var(--primary) l c h / 0.45);
+}
+
+/* ── 23 m · Empty State ──────────────────────────────────────────────────── */
+/*    Looks like a boot screen awaiting input.                              */
+
+.cassette-futurism .empty-state {
+    position: relative;
+    overflow: hidden;
+}
+.cassette-futurism .empty-state::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(
+            90deg,
+            transparent 0,
+            transparent 40px,
+            oklch(from var(--primary) l c h / 0.04) 40px,
+            oklch(from var(--primary) l c h / 0.04) 41px
+        );
+    pointer-events: none;
+}
+.cassette-futurism .empty-state h3 {
+    text-shadow:
+        0 0 1px currentColor,
+        0 0 12px oklch(from var(--primary) l c h / 0.5);
+}
+.cassette-futurism .empty-state h3::after {
+    content: " _";
+    animation: cf-blink 1.1s steps(2, end) infinite;
+}
+
+/* ── 23 n · Keyboard & Shortcuts ─────────────────────────────────────────── */
+
+.cassette-futurism kbd {
+    font-family: var(--font-mono);
+    background: oklch(from var(--background) calc(l + 0.02) c h);
+    color: var(--primary);
+    border: 1px solid oklch(from var(--primary) l c h / 0.5);
+    border-radius: 0;
+    box-shadow:
+        inset 0 -2px 0 oklch(from var(--primary) l c h / 0.25),
+        0 1px 0 oklch(0 0 0 / 0.6);
+    padding: 2px 6px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    text-shadow: 0 0 4px oklch(from var(--primary) l c h / 0.4);
+}
+
+/* ── 23 o · Badges ───────────────────────────────────────────────────────── */
+
+.cassette-futurism .badge {
+    border-radius: 0;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border: 1px solid oklch(from var(--border) l c h / 0.8);
+    background: transparent;
+}
+.cassette-futurism .badge-success {
+    color: var(--success);
+    border-color: oklch(from var(--success) l c h / 0.6);
+    text-shadow: 0 0 6px oklch(from var(--success) l c h / 0.4);
+}
+.cassette-futurism .badge-danger {
+    color: var(--destructive);
+    border-color: oklch(from var(--destructive) l c h / 0.6);
+    text-shadow: 0 0 6px oklch(from var(--destructive) l c h / 0.4);
+}
+.cassette-futurism .badge-info {
+    color: var(--primary);
+    border-color: oklch(from var(--primary) l c h / 0.6);
+    text-shadow: 0 0 6px oklch(from var(--primary) l c h / 0.4);
+}
+.cassette-futurism .badge-warn {
+    color: oklch(0.82 0.17 85);
+    border-color: oklch(0.82 0.17 85 / 0.6);
+    text-shadow: 0 0 6px oklch(0.82 0.17 85 / 0.4);
+}
+
+/* ── 23 p · Settings & Theme Cards ───────────────────────────────────────── */
+
+.cassette-futurism .mode-btn,
+.cassette-futurism .theme-card {
+    background: var(--card);
+    border: 1px solid oklch(from var(--border) l c h / 0.7);
+    border-radius: 0;
+    transition: border-color 0.08s linear, box-shadow 0.08s linear;
+}
+.cassette-futurism .mode-btn:hover,
+.cassette-futurism .theme-card:hover {
+    border-color: var(--primary);
+    box-shadow: inset 0 0 20px oklch(from var(--primary) l c h / 0.1);
+}
+.cassette-futurism .mode-btn.active,
+.cassette-futurism .theme-card.active {
+    border-color: var(--primary);
+    box-shadow:
+        inset 0 0 0 1px var(--primary),
+        0 0 16px oklch(from var(--primary) l c h / 0.25);
+}
+.cassette-futurism .theme-swatch {
+    border-radius: 0;
+    border: 1px solid oklch(from var(--foreground) l c h / 0.2);
+}
+.cassette-futurism .theme-check-dot {
+    background: var(--primary);
+    box-shadow: 0 0 8px oklch(from var(--primary) l c h / 0.7);
+    border-radius: 0;
+}
+.cassette-futurism .theme-card h4,
+.cassette-futurism .mode-btn h4 {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* ── 23 q · Row Detail ───────────────────────────────────────────────────── */
+
+.cassette-futurism .row-detail-panel {
+    background: var(--card);
+    border-left: 1px solid var(--primary);
+    box-shadow: -12px 0 40px oklch(0 0 0 / 0.5);
+}
+.cassette-futurism .row-detail-header h3::before {
+    content: "◆ ";
+    color: var(--primary);
+}
+.cassette-futurism .row-detail-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-ui-sm);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: oklch(from var(--muted-foreground) l c h);
+}
+.cassette-futurism .row-detail-label::before {
+    content: "> ";
+    color: var(--primary);
+}
+.cassette-futurism .row-detail-backdrop.open {
+    background: oklch(0 0 0 / 0.7);
+}
+
+/* ── 23 r · JSON & Mono Content ──────────────────────────────────────────── */
+
+.cassette-futurism .json-value {
+    font-family: var(--font-mono);
+    background: oklch(from var(--muted) l c h);
+    border: 1px solid oklch(from var(--border) l c h / 0.5);
+    border-radius: 0;
+    font-size: 0.78rem;
+}
+
+/* ── 23 s · Status Messages ──────────────────────────────────────────────── */
+
+.cassette-futurism .status-msg {
+    border-radius: 0;
+    border: 1px solid oklch(from var(--border) l c h / 0.6);
+    border-left-width: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.cassette-futurism .status-success {
+    border-left-color: var(--success);
+    color: var(--success);
+    background: oklch(from var(--success) l c h / 0.08);
+}
+.cassette-futurism .status-error {
+    border-left-color: var(--destructive);
+    color: var(--destructive);
+    background: oklch(from var(--destructive) l c h / 0.08);
+}
+.cassette-futurism .table-page-error {
+    border-radius: 0;
+    border: 1px solid var(--destructive);
+    border-left-width: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.cassette-futurism .table-page-error::before {
+    content: "!! ";
+    color: var(--destructive);
+    font-weight: 700;
+}
+
+/* ── 23 t · Content Entrance Animation ───────────────────────────────────── */
+/*    Boot-typing reveal — sharp, stepped, mechanical.                       */
+
+@keyframes cf-enter {
+    0%   { opacity: 0;    transform: translateY(2px); }
+    50%  { opacity: 0.5; }
+    100% { opacity: 1;    transform: translateY(0); }
+}
+.cassette-futurism .card-content,
+.cassette-futurism .table-page-body,
+.cassette-futurism .settings-container,
+.cassette-futurism .roles-body {
+    animation: cf-enter 0.2s steps(8, end) both;
+}
+
+/* ── 23 u · Priv List & Role Props ───────────────────────────────────────── */
+
+.cassette-futurism .priv-row,
+.cassette-futurism .role-prop {
+    border-bottom: 1px dashed oklch(from var(--border) l c h / 0.4);
+}
+.cassette-futurism .role-detail-heading {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--primary);
+}
+.cassette-futurism .role-detail-heading::before {
+    content: "── ";
+    opacity: 0.6;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
