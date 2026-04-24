@@ -14,6 +14,7 @@ pub enum ThemeName {
     SolarDusk,
     Nature,
     Swiss,
+    Nocturne,
 }
 
 impl ThemeName {
@@ -23,6 +24,7 @@ impl ThemeName {
             Self::SolarDusk => "solar-dusk",
             Self::Nature => "nature",
             Self::Swiss => "swiss",
+            Self::Nocturne => "nocturne",
         }
     }
 
@@ -31,15 +33,17 @@ impl ThemeName {
             "solar-dusk" => Self::SolarDusk,
             "nature" => Self::Nature,
             "swiss" => Self::Swiss,
+            "nocturne" => Self::Nocturne,
             _ => Self::AmethystHaze,
         }
     }
 
-    pub const ALL: [ThemeName; 4] = [
+    pub const ALL: [ThemeName; 5] = [
         Self::AmethystHaze,
         Self::SolarDusk,
         Self::Nature,
         Self::Swiss,
+        Self::Nocturne,
     ];
 
     pub fn display_name(self) -> &'static str {
@@ -48,6 +52,7 @@ impl ThemeName {
             Self::SolarDusk => "Solar Dusk",
             Self::Nature => "Nature",
             Self::Swiss => "Swiss",
+            Self::Nocturne => "Nocturne",
         }
     }
 
@@ -57,6 +62,7 @@ impl ThemeName {
             Self::SolarDusk => "Warm sunset tones",
             Self::Nature => "Fresh green palette",
             Self::Swiss => "Precision engineering",
+            Self::Nocturne => "After-hours serif, amber glow",
         }
     }
 }
@@ -303,6 +309,7 @@ mod tests {
         assert_eq!(ThemeName::SolarDusk.as_str(), "solar-dusk");
         assert_eq!(ThemeName::Nature.as_str(), "nature");
         assert_eq!(ThemeName::Swiss.as_str(), "swiss");
+        assert_eq!(ThemeName::Nocturne.as_str(), "nocturne");
     }
 
     #[test]
@@ -314,6 +321,7 @@ mod tests {
         assert_eq!(ThemeName::from_str("solar-dusk"), ThemeName::SolarDusk);
         assert_eq!(ThemeName::from_str("nature"), ThemeName::Nature);
         assert_eq!(ThemeName::from_str("swiss"), ThemeName::Swiss);
+        assert_eq!(ThemeName::from_str("nocturne"), ThemeName::Nocturne);
     }
 
     #[test]
@@ -331,8 +339,8 @@ mod tests {
     }
 
     #[test]
-    fn theme_all_has_four_variants() {
-        assert_eq!(ThemeName::ALL.len(), 4);
+    fn theme_all_has_five_variants() {
+        assert_eq!(ThemeName::ALL.len(), 5);
     }
 
     #[test]
@@ -341,6 +349,7 @@ mod tests {
         assert_eq!(ThemeName::SolarDusk.display_name(), "Solar Dusk");
         assert_eq!(ThemeName::Nature.display_name(), "Nature");
         assert_eq!(ThemeName::Swiss.display_name(), "Swiss");
+        assert_eq!(ThemeName::Nocturne.display_name(), "Nocturne");
     }
 
     #[test]

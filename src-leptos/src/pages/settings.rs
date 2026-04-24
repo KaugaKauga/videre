@@ -231,6 +231,11 @@ impl ThemeName {
                 "oklch(0.15 0 0)",
                 "oklch(0.948 0 0)",
             ),
+            Self::Nocturne => (
+                "oklch(0.78 0.14 75)",
+                "oklch(0.14 0.018 265)",
+                "oklch(0.91 0.015 85)",
+            ),
         }
     }
 }
