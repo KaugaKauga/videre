@@ -3,8 +3,6 @@
 //! Mirrors the React `lib/theme.ts` — reads/writes localStorage and toggles
 //! CSS classes on `<html>` to switch between themes and light/dark mode.
 
-
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -15,6 +13,7 @@ pub enum ThemeName {
     AmethystHaze,
     SolarDusk,
     Nature,
+    Swiss,
 }
 
 impl ThemeName {
@@ -23,6 +22,7 @@ impl ThemeName {
             Self::AmethystHaze => "amethyst-haze",
             Self::SolarDusk => "solar-dusk",
             Self::Nature => "nature",
+            Self::Swiss => "swiss",
         }
     }
 
@@ -30,17 +30,24 @@ impl ThemeName {
         match s {
             "solar-dusk" => Self::SolarDusk,
             "nature" => Self::Nature,
+            "swiss" => Self::Swiss,
             _ => Self::AmethystHaze,
         }
     }
 
-    pub const ALL: [ThemeName; 3] = [Self::AmethystHaze, Self::SolarDusk, Self::Nature];
+    pub const ALL: [ThemeName; 4] = [
+        Self::AmethystHaze,
+        Self::SolarDusk,
+        Self::Nature,
+        Self::Swiss,
+    ];
 
     pub fn display_name(self) -> &'static str {
         match self {
             Self::AmethystHaze => "Amethyst Haze",
             Self::SolarDusk => "Solar Dusk",
             Self::Nature => "Nature",
+            Self::Swiss => "Swiss",
         }
     }
 
@@ -49,6 +56,7 @@ impl ThemeName {
             Self::AmethystHaze => "Purple-tinted elegance",
             Self::SolarDusk => "Warm sunset tones",
             Self::Nature => "Fresh green palette",
+            Self::Swiss => "Precision engineering",
         }
     }
 }
@@ -206,13 +214,18 @@ mod tests {
         assert_eq!(ThemeName::AmethystHaze.as_str(), "amethyst-haze");
         assert_eq!(ThemeName::SolarDusk.as_str(), "solar-dusk");
         assert_eq!(ThemeName::Nature.as_str(), "nature");
+        assert_eq!(ThemeName::Swiss.as_str(), "swiss");
     }
 
     #[test]
     fn theme_from_str_known_values() {
-        assert_eq!(ThemeName::from_str("amethyst-haze"), ThemeName::AmethystHaze);
+        assert_eq!(
+            ThemeName::from_str("amethyst-haze"),
+            ThemeName::AmethystHaze
+        );
         assert_eq!(ThemeName::from_str("solar-dusk"), ThemeName::SolarDusk);
         assert_eq!(ThemeName::from_str("nature"), ThemeName::Nature);
+        assert_eq!(ThemeName::from_str("swiss"), ThemeName::Swiss);
     }
 
     #[test]
@@ -230,8 +243,8 @@ mod tests {
     }
 
     #[test]
-    fn theme_all_has_three_variants() {
-        assert_eq!(ThemeName::ALL.len(), 3);
+    fn theme_all_has_four_variants() {
+        assert_eq!(ThemeName::ALL.len(), 4);
     }
 
     #[test]
@@ -239,6 +252,7 @@ mod tests {
         assert_eq!(ThemeName::AmethystHaze.display_name(), "Amethyst Haze");
         assert_eq!(ThemeName::SolarDusk.display_name(), "Solar Dusk");
         assert_eq!(ThemeName::Nature.display_name(), "Nature");
+        assert_eq!(ThemeName::Swiss.display_name(), "Swiss");
     }
 
     #[test]

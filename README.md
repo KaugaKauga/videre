@@ -55,18 +55,20 @@ Videre is currently **read-only** — perfect for browsing and understanding you
 
 ### Build from Source
 
-Requires [Bun](https://bun.sh/) (or npm) and [Rust](https://rustup.rs/).
+Requires [Rust](https://rustup.rs/), [Trunk](https://trunkrs.dev/), and the [Tauri CLI](https://tauri.app/).
 
 ```bash
+# Install build tools
+rustup target add wasm32-unknown-unknown
+cargo install trunk
+cargo install tauri-cli
+
 # Clone the repository
 git clone https://github.com/yourusername/videre.git
 cd videre
 
-# Install dependencies
-bun install
-
 # Build the app
-bun run tauri build
+cargo tauri build
 ```
 
 The built application will be in `src-tauri/target/release/`.
@@ -82,19 +84,18 @@ See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed setup instructions, includin
 **Quick start:**
 
 ```bash
-bun install
 docker-compose up -d    # Start test database
-bun run tauri dev       # Run the app
+cargo tauri dev         # Run the app
 ```
 
 ## Tech Stack
 
 | Layer    | Technology |
 |----------|------------|
-| Frontend | React, TypeScript, Tailwind CSS |
+| Frontend | Leptos 0.7 (Rust → WASM), Trunk |
 | Backend  | Rust, Tauri 2 |
 | Database | tokio-postgres |
-| State    | Zustand |
+| Styling  | Hand-written CSS (OKLCH) |
 
 ## Roadmap
 

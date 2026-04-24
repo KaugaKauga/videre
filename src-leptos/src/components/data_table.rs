@@ -301,7 +301,7 @@ pub fn DataTable(
                                             <span>{name}</span>
                                             {if is_fk {
                                                 Some(view! {
-                                                    <span class="fk-badge" title="Foreign key">{"\u{1F517}"}</span>
+                                                    <span class="fk-badge" title="Foreign key">"FK"</span>
                                                 })
                                             } else {
                                                 None
