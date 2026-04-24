@@ -2444,8 +2444,7 @@ kbd {
 .cassette-futurism .card,
 .cassette-futurism .settings-card,
 .cassette-futurism .connection-card,
-.cassette-futurism .shortcuts-box,
-.cassette-futurism .row-detail-panel {
+.cassette-futurism .shortcuts-box {
     background: var(--card);
     border: 1px solid oklch(from var(--border) l c h / 0.7);
     border-radius: 0;
