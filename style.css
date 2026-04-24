@@ -2370,7 +2370,7 @@ kbd {
         color 0.08s linear;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    font-size: 0.82rem;
+    font-size: var(--fs-ui);
 }
 /*    Block cursor that materialises before the label on hover/active       */
 .cassette-futurism .sidebar-menu-button::before {
@@ -2418,7 +2418,7 @@ kbd {
 .cassette-futurism .tab-label {
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    font-size: 0.78rem;
+    font-size: var(--fs-ui);
 }
 .cassette-futurism .tab:hover {
     background: oklch(from var(--primary) l c h / 0.06);
@@ -2573,7 +2573,7 @@ kbd {
 .cassette-futurism .data-table-th {
     background: oklch(from var(--background) calc(l - 0.015) c h);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--fs-ui-sm);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -2593,7 +2593,7 @@ kbd {
 }
 .cassette-futurism .data-table-td {
     font-family: var(--font-mono);
-    font-size: 0.82rem;
+    font-size: var(--fs-ui);
     font-variant-numeric: tabular-nums;
     font-feature-settings: "zero", "ss01";
 }
