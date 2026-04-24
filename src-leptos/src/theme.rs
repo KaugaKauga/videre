@@ -160,6 +160,12 @@ impl Mode {
 const THEME_KEY: &str = "videre-theme";
 const MODE_KEY: &str = "videre-mode";
 const FONT_SIZE_KEY: &str = "videre-font-size";
+const SIDEBAR_WIDTH_KEY: &str = "videre-sidebar-width";
+
+/// Minimum sidebar width in pixels; prevents the user from collapsing it to nothing.
+pub const SIDEBAR_MIN_PX: f64 = 160.0;
+/// Maximum sidebar width in pixels; keeps it from swallowing the content area.
+pub const SIDEBAR_MAX_PX: f64 = 480.0;
 
 const FONT_SIZE_CLASSES: [&str; 3] = ["fs-small", "fs-large", "fs-xl"];
 
@@ -221,6 +227,21 @@ pub fn get_stored_font_size() -> FontSize {
 fn set_stored_font_size(size: FontSize) {
     if let Some(s) = local_storage() {
         let _ = s.set_item(FONT_SIZE_KEY, size.as_str());
+    }
+}
+
+/// Read the stored sidebar width (pixels).  None = use CSS default.
+pub fn get_stored_sidebar_width() -> Option<f64> {
+    local_storage()
+        .and_then(|s| s.get_item(SIDEBAR_WIDTH_KEY).ok().flatten())
+        .and_then(|v| v.parse::<f64>().ok())
+        .map(|w| w.clamp(SIDEBAR_MIN_PX, SIDEBAR_MAX_PX))
+}
+
+/// Write sidebar width (pixels) to localStorage.
+pub fn set_stored_sidebar_width(px: f64) {
+    if let Some(s) = local_storage() {
+        let _ = s.set_item(SIDEBAR_WIDTH_KEY, &px.to_string());
     }
 }
 

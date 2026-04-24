@@ -1,8 +1,11 @@
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::PointerEvent;
 
 use crate::stores::db_store::DbStore;
 use crate::components::icons;
 use crate::stores::tab_store::{TabStore, TabType};
+use crate::theme;
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
@@ -25,8 +28,55 @@ pub fn Sidebar() -> impl IntoView {
         tab_store.open_singleton_tab(TabType::Settings, "Settings");
     };
 
+    // ---- Resize state ------------------------------------------------------
+    // `width_px`: Some(n) = user-set, None = fall back to CSS default (which
+    // scales with --fs-ui).  `drag_start`: (pointer_x, width_at_drag_start).
+    let width_px = RwSignal::new(theme::get_stored_sidebar_width());
+    let drag_start = RwSignal::new(None::<(f64, f64)>);
+
+    let on_handle_down = move |e: PointerEvent| {
+        // Read current rendered width so we can drag relative to it, even if
+        // the user hasn't set one yet (CSS default).
+        let current_w = width_px.get_untracked().unwrap_or_else(|| {
+            web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.query_selector(".sidebar").ok().flatten())
+                .map(|el| el.get_bounding_client_rect().width())
+                .unwrap_or(240.0)
+        });
+        drag_start.set(Some((e.client_x() as f64, current_w)));
+        if let Some(target) = e.target().and_then(|t| t.dyn_into::<web_sys::Element>().ok()) {
+            let _ = target.set_pointer_capture(e.pointer_id());
+        }
+        e.prevent_default();
+    };
+
+    let on_handle_move = move |e: PointerEvent| {
+        if let Some((start_x, start_w)) = drag_start.get_untracked() {
+            let new_w = (start_w + (e.client_x() as f64 - start_x))
+                .clamp(theme::SIDEBAR_MIN_PX, theme::SIDEBAR_MAX_PX);
+            width_px.set(Some(new_w));
+        }
+    };
+
+    let on_handle_up = move |_: PointerEvent| {
+        if drag_start.get_untracked().is_some() {
+            if let Some(w) = width_px.get_untracked() {
+                theme::set_stored_sidebar_width(w);
+            }
+        }
+        drag_start.set(None);
+    };
+
+    let is_dragging = move || drag_start.get().is_some();
+
+    let sidebar_style = move || match width_px.get() {
+        Some(w) => format!("width: {w}px; min-width: {w}px;"),
+        None => String::new(),
+    };
+
     view! {
-        <aside class="sidebar">
+        <aside class="sidebar" style=sidebar_style>
             // Header
             <div class="sidebar-header">
                 {icons::icon_database(20)}
@@ -125,6 +175,17 @@ pub fn Sidebar() -> impl IntoView {
                     </button>
                 </nav>
             </div>
+
+            // Drag handle — straddles the right border.
+            <div
+                class="sidebar-resize-handle"
+                class:dragging=is_dragging
+                title="Drag to resize"
+                on:pointerdown=on_handle_down
+                on:pointermove=on_handle_move
+                on:pointerup=on_handle_up
+                on:pointercancel=on_handle_up
+            />
         </aside>
     }
 }
