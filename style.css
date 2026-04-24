@@ -98,6 +98,9 @@ button {
     --success-bg: oklch(0.55 0.16 145 / 0.1);
     --error: oklch(0.55 0.18 25);
     --error-bg: oklch(0.55 0.18 25 / 0.1);
+
+    --fs-ui: 0.8125rem;
+    --fs-ui-sm: 0.6875rem;
 }
 
 /* ── Amethyst Haze · dark ────────────────────────────────────────────────── */
@@ -461,7 +464,7 @@ small,
     overflow: hidden;
 }
 .sidebar-group-label {
-    font-size: 0.6875rem;
+    font-size: var(--fs-ui-sm);
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -486,7 +489,7 @@ small,
     gap: 0.5rem;
     width: 100%;
     padding: 0.375rem 0.5rem;
-    font-size: 0.8125rem;
+    font-size: var(--fs-ui);
     font-weight: 400;
     color: var(--sidebar-foreground);
     background: transparent;
@@ -518,7 +521,7 @@ small,
 }
 .sidebar-empty {
     padding: 0.5rem 1rem;
-    font-size: 0.75rem;
+    font-size: var(--fs-ui);
     color: var(--muted-foreground);
 }
 .sidebar-bottom-section {
@@ -567,7 +570,7 @@ small,
     background: var(--background);
 }
 .tab-label {
-    font-size: 0.8125rem;
+    font-size: var(--fs-ui);
     color: var(--muted-foreground);
     white-space: nowrap;
     user-select: none;
@@ -963,7 +966,7 @@ kbd {
 .data-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.8125rem;
+    font-size: var(--fs-ui);
 }
 .data-table thead {
     position: sticky;
@@ -973,7 +976,7 @@ kbd {
 .data-table-th {
     padding: 0.5rem 1rem;
     text-align: left;
-    font-size: 0.6875rem;
+    font-size: var(--fs-ui-sm);
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -1173,14 +1176,14 @@ kbd {
     border-top: 1px solid oklch(from var(--border) l c h / 0.4);
 }
 .row-detail-label {
-    font-size: 0.8125rem;
+    font-size: var(--fs-ui);
     font-weight: 500;
     color: var(--muted-foreground);
     min-width: 7.5rem;
     flex-shrink: 0;
 }
 .row-detail-value {
-    font-size: 0.8125rem;
+    font-size: var(--fs-ui);
     color: var(--foreground);
     word-break: break-all;
 }
@@ -1657,7 +1660,7 @@ kbd {
 }
 .swiss .sidebar-group-label,
 .swiss .recents-heading {
-    font-size: 0.6875rem;
+    font-size: var(--fs-ui-sm);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -1846,10 +1849,10 @@ kbd {
 /*    Thick black header rule, precise hairline rows, red hover tint.       */
 
 .swiss .data-table {
-    font-size: 0.875rem;
+    font-size: var(--fs-ui);
 }
 .swiss .data-table-th {
-    font-size: 0.6875rem;
+    font-size: var(--fs-ui-sm);
     font-weight: 600;
     letter-spacing: 0.1em;
     border-bottom: 2px solid var(--foreground);
@@ -2028,7 +2031,7 @@ kbd {
     letter-spacing: 0.02em;
 }
 .swiss .row-detail-label {
-    font-size: 0.6875rem;
+    font-size: var(--fs-ui-sm);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -2121,4 +2124,23 @@ kbd {
 }
 .swiss .priv-row {
     border-bottom-color: oklch(from var(--border) l c h / 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §  FONT SIZE SCALE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html.fs-small {
+    --fs-ui: 0.75rem;
+    --fs-ui-sm: 0.625rem;
+}
+
+html.fs-large {
+    --fs-ui: 0.9375rem;
+    --fs-ui-sm: 0.8125rem;
+}
+
+html.fs-xl {
+    --fs-ui: 1.0625rem;
+    --fs-ui-sm: 0.9375rem;
 }

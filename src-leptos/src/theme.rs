@@ -61,6 +61,55 @@ impl ThemeName {
     }
 }
 
+/// UI font size scale.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FontSize {
+    Small,
+    Normal,
+    Large,
+    XLarge,
+}
+
+impl FontSize {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Small => "fs-small",
+            Self::Normal => "fs-normal",
+            Self::Large => "fs-large",
+            Self::XLarge => "fs-xl",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "fs-small" => Self::Small,
+            "fs-large" => Self::Large,
+            "fs-xl" => Self::XLarge,
+            _ => Self::Normal,
+        }
+    }
+
+    pub const ALL: [FontSize; 4] = [Self::Small, Self::Normal, Self::Large, Self::XLarge];
+
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::Small => "Small",
+            Self::Normal => "Normal",
+            Self::Large => "Large",
+            Self::XLarge => "X-Large",
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            Self::Small => "Compact",
+            Self::Normal => "Default",
+            Self::Large => "Comfortable",
+            Self::XLarge => "Accessible",
+        }
+    }
+}
+
 /// Light or dark mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -104,6 +153,9 @@ impl Mode {
 
 const THEME_KEY: &str = "videre-theme";
 const MODE_KEY: &str = "videre-mode";
+const FONT_SIZE_KEY: &str = "videre-font-size";
+
+const FONT_SIZE_CLASSES: [&str; 3] = ["fs-small", "fs-large", "fs-xl"];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -151,9 +203,38 @@ fn set_stored_mode(mode: Mode) {
     }
 }
 
+/// Read the stored font size from localStorage (defaults to Normal).
+pub fn get_stored_font_size() -> FontSize {
+    local_storage()
+        .and_then(|s| s.get_item(FONT_SIZE_KEY).ok().flatten())
+        .map(|v| FontSize::from_str(&v))
+        .unwrap_or(FontSize::Normal)
+}
+
+/// Write font size to localStorage.
+fn set_stored_font_size(size: FontSize) {
+    if let Some(s) = local_storage() {
+        let _ = s.set_item(FONT_SIZE_KEY, size.as_str());
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Apply
 // ---------------------------------------------------------------------------
+
+/// Apply font size by toggling a CSS class on `<html>`.
+pub fn apply_font_size(size: FontSize) {
+    let Some(el) = document_element() else {
+        return;
+    };
+    let cl = el.class_list();
+    for cls in FONT_SIZE_CLASSES {
+        let _ = cl.remove_1(cls);
+    }
+    if size != FontSize::Normal {
+        let _ = cl.add_1(size.as_str());
+    }
+}
 
 /// Apply theme + mode by toggling CSS classes on `<html>`.
 pub fn apply_theme(theme: ThemeName, mode: Mode) {
@@ -187,6 +268,7 @@ pub fn initialize_theme() {
     let theme = get_stored_theme();
     let mode = get_stored_mode();
     apply_theme(theme, mode);
+    apply_font_size(get_stored_font_size());
 }
 
 /// Change and persist the theme (keeps current mode).
@@ -201,6 +283,12 @@ pub fn set_mode(mode: Mode) {
     let theme = get_stored_theme();
     set_stored_mode(mode);
     apply_theme(theme, mode);
+}
+
+/// Change and persist the font size.
+pub fn set_font_size(size: FontSize) {
+    set_stored_font_size(size);
+    apply_font_size(size);
 }
 
 #[cfg(test)]

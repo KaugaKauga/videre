@@ -2,7 +2,7 @@
 
 use leptos::prelude::*;
 
-use crate::theme::{self, Mode, ThemeName};
+use crate::theme::{self, FontSize, Mode, ThemeName};
 
 // ---------------------------------------------------------------------------
 // Settings page component
@@ -12,6 +12,7 @@ use crate::theme::{self, Mode, ThemeName};
 pub fn SettingsPage() -> impl IntoView {
     let (current_theme, set_current_theme) = signal(theme::get_stored_theme());
     let (current_mode, set_current_mode) = signal(theme::get_stored_mode());
+    let (current_font_size, set_current_font_size) = signal(theme::get_stored_font_size());
 
     let handle_theme_change = move |t: ThemeName| {
         theme::set_theme(t);
@@ -21,6 +22,11 @@ pub fn SettingsPage() -> impl IntoView {
     let handle_mode_change = move |m: Mode| {
         theme::set_mode(m);
         set_current_mode.set(m);
+    };
+
+    let handle_font_size_change = move |s: FontSize| {
+        theme::set_font_size(s);
+        set_current_font_size.set(s);
     };
 
     view! {
@@ -45,6 +51,14 @@ pub fn SettingsPage() -> impl IntoView {
                         <div class="mode-grid">
                             {Mode::Light.render_button(current_mode, handle_mode_change)}
                             {Mode::Dark.render_button(current_mode, handle_mode_change)}
+                        </div>
+                    </div>
+
+                    // Font size selection
+                    <div class="settings-section">
+                        <p class="text-sm text-muted">"Adjust the font size for sidebar items, tabs, and table rows"</p>
+                        <div class="mode-grid">
+                            {FontSize::ALL.map(|s| s.render_button(current_font_size, handle_font_size_change)).collect_view()}
                         </div>
                     </div>
 
@@ -73,6 +87,44 @@ pub fn SettingsPage() -> impl IntoView {
                 </div>
             </div>
         </div>
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Font size button
+// ---------------------------------------------------------------------------
+
+impl FontSize {
+    fn render_button(
+        self,
+        current: ReadSignal<FontSize>,
+        on_click: impl Fn(FontSize) + 'static + Copy,
+    ) -> impl IntoView {
+        let is_active = move || current.get() == self;
+        let preview_size = match self {
+            FontSize::Small => "0.75rem",
+            FontSize::Normal => "0.8125rem",
+            FontSize::Large => "0.9375rem",
+            FontSize::XLarge => "1.0625rem",
+        };
+
+        view! {
+            <button
+                class="mode-btn"
+                class:active=is_active
+                on:click=move |_| on_click(self)
+            >
+                <div class="mode-btn-inner">
+                    <div class="mode-icon" class:active=is_active style=format!("font-size:{preview_size};font-weight:600;width:20px;height:20px;display:flex;align-items:center;justify-content:center")>
+                        "Aa"
+                    </div>
+                    <div>
+                        <h4>{self.display_name()}</h4>
+                        <p class="text-xs text-muted">{self.description()}</p>
+                    </div>
+                </div>
+            </button>
+        }
     }
 }
 
