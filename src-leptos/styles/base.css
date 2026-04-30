@@ -846,15 +846,14 @@ kbd {
 }
 .data-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: var(--fs-ui);
 }
-.data-table thead {
+.data-table-th {
     position: sticky;
     top: 0;
     z-index: 5;
-}
-.data-table-th {
     padding: 0.5rem 1rem;
     text-align: left;
     font-size: var(--fs-ui-sm);
@@ -969,7 +968,9 @@ kbd {
 }
 .table-page-body {
     flex: 1;
-    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     min-height: 0;
     padding: 0;
 }
