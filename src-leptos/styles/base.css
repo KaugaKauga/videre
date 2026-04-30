@@ -112,6 +112,8 @@ body {
     height: 100%;
     width: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     user-select: none;
     -webkit-user-select: none;
     font-family: var(--font-sans);
@@ -172,12 +174,66 @@ small,
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   §3b TITLE BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.title-bar {
+    display: flex;
+    align-items: center;
+    height: 2.25rem;
+    flex-shrink: 0;
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    z-index: 100;
+}
+.title-bar-traffic-light-spacer {
+    width: 70px;
+    flex-shrink: 0;
+}
+.title-bar-center {
+    flex: 1;
+    height: 100%;
+}
+.title-bar-controls {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    flex-shrink: 0;
+}
+.title-bar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+        background-color 0.1s ease,
+        color 0.1s ease;
+}
+.title-bar-btn:hover {
+    background: var(--muted);
+    color: var(--foreground);
+}
+.title-bar-close:hover {
+    background: oklch(0.529 0.218 26.1);
+    color: white;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    §4  SHELL LAYOUT
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .shell {
     display: flex;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     width: 100%;
     overflow: hidden;
 }
@@ -598,8 +654,9 @@ input:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    flex: 1;
     width: 100%;
+    min-height: 0;
     background: var(--background);
     padding: 1.5rem;
     overflow: auto;

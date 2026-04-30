@@ -7,6 +7,10 @@
     "core:default",
     "opener:default",
     "store:default",
-    "store:allow-load"
+    "store:allow-load",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging"
   ]
 }

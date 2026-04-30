@@ -20,6 +20,25 @@ pub fn run() {
             db::get_row_by_pk,
             db::disconnect_db,
         ])
+        .setup(|app| {
+            // On Windows/Linux, remove native decorations so our custom title bar
+            // is the only chrome. On macOS, decorations stay enabled because
+            // `titleBarStyle: "overlay"` already hides the title bar while
+            // preserving traffic lights and rounded corners.
+            #[cfg(not(target_os = "macos"))]
+            {
+                use tauri::Manager;
+                let window = app
+                    .get_webview_window("main")
+                    .expect("main window not found");
+                let _ = window.set_decorations(false);
+            }
+
+            #[cfg(target_os = "macos")]
+            let _ = app;
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

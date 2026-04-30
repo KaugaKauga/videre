@@ -805,3 +805,22 @@
     content: "── ";
     opacity: 0.6;
 }
+
+/* ── Title bar ───────────────────────────────────────────────────────────── */
+
+.cassette-futurism .title-bar {
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+}
+.cassette-futurism .title-bar-btn {
+    color: var(--muted-foreground);
+    font-family: var(--font-mono);
+}
+.cassette-futurism .title-bar-btn:hover {
+    background: var(--secondary);
+    color: var(--foreground);
+}
+.cassette-futurism .title-bar-close:hover {
+    background: var(--destructive);
+    color: var(--destructive-foreground);
+}

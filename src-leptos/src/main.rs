@@ -4,12 +4,14 @@ mod stores;
 mod tauri;
 mod theme;
 mod types;
+mod window;
 
+use components::shell::Shell;
+use components::title_bar::TitleBar;
+use leptos::prelude::*;
 use pages::connection::ConnectionPage;
 use stores::connection_store::ConnectionStore;
 use stores::db_store::DbStore;
-use leptos::prelude::*;
-use components::shell::Shell;
 
 fn main() {
     theme::initialize_theme();
@@ -24,6 +26,7 @@ fn App() -> impl IntoView {
     provide_context(db_store);
 
     view! {
+        <TitleBar />
         {move || {
             if db_store.is_connected.get() {
                 view! { <Shell /> }.into_any()
