@@ -1,7 +1,7 @@
-//! Theme & mode management for Videre.
+//! Theme management for Videre.
 //!
-//! Mirrors the React `lib/theme.ts` — reads/writes localStorage and toggles
-//! CSS classes on `<html>` to switch between themes and light/dark mode.
+//! Reads/writes localStorage and toggles CSS classes on `<html>` to switch
+//! between themes.
 
 // ---------------------------------------------------------------------------
 // Types
@@ -10,9 +10,6 @@
 /// Available color themes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ThemeName {
-    AmethystHaze,
-    SolarDusk,
-    Nature,
     Swiss,
     CassetteFuturism,
 }
@@ -20,9 +17,6 @@ pub enum ThemeName {
 impl ThemeName {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::AmethystHaze => "amethyst-haze",
-            Self::SolarDusk => "solar-dusk",
-            Self::Nature => "nature",
             Self::Swiss => "swiss",
             Self::CassetteFuturism => "cassette-futurism",
         }
@@ -30,27 +24,15 @@ impl ThemeName {
 
     pub fn from_str(s: &str) -> Self {
         match s {
-            "solar-dusk" => Self::SolarDusk,
-            "nature" => Self::Nature,
-            "swiss" => Self::Swiss,
             "cassette-futurism" => Self::CassetteFuturism,
-            _ => Self::AmethystHaze,
+            _ => Self::Swiss,
         }
     }
 
-    pub const ALL: [ThemeName; 5] = [
-        Self::AmethystHaze,
-        Self::SolarDusk,
-        Self::Nature,
-        Self::Swiss,
-        Self::CassetteFuturism,
-    ];
+    pub const ALL: [ThemeName; 2] = [Self::Swiss, Self::CassetteFuturism];
 
     pub fn display_name(self) -> &'static str {
         match self {
-            Self::AmethystHaze => "Amethyst Haze",
-            Self::SolarDusk => "Solar Dusk",
-            Self::Nature => "Nature",
             Self::Swiss => "Swiss",
             Self::CassetteFuturism => "Cassette Futurism",
         }
@@ -58,9 +40,6 @@ impl ThemeName {
 
     pub fn description(self) -> &'static str {
         match self {
-            Self::AmethystHaze => "Purple-tinted elegance",
-            Self::SolarDusk => "Warm sunset tones",
-            Self::Nature => "Fresh green palette",
             Self::Swiss => "Precision engineering",
             Self::CassetteFuturism => "Phosphor, scanlines, ALL CAPS",
         }
@@ -116,49 +95,11 @@ impl FontSize {
     }
 }
 
-/// Light or dark mode.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Mode {
-    Light,
-    Dark,
-}
-
-impl Mode {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Light => "light",
-            Self::Dark => "dark",
-        }
-    }
-
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            "dark" => Self::Dark,
-            _ => Self::Light,
-        }
-    }
-
-    pub fn display_name(self) -> &'static str {
-        match self {
-            Self::Light => "Light",
-            Self::Dark => "Dark",
-        }
-    }
-
-    pub fn description(self) -> &'static str {
-        match self {
-            Self::Light => "Bright and clear",
-            Self::Dark => "Easy on the eyes",
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // localStorage keys
 // ---------------------------------------------------------------------------
 
 const THEME_KEY: &str = "videre-theme";
-const MODE_KEY: &str = "videre-mode";
 const FONT_SIZE_KEY: &str = "videre-font-size";
 const SIDEBAR_WIDTH_KEY: &str = "videre-sidebar-width";
 
@@ -185,33 +126,18 @@ fn document_element() -> Option<web_sys::Element> {
 // Read / write
 // ---------------------------------------------------------------------------
 
-/// Read the stored theme from localStorage (defaults to AmethystHaze).
+/// Read the stored theme from localStorage (defaults to Swiss).
 pub fn get_stored_theme() -> ThemeName {
     local_storage()
         .and_then(|s| s.get_item(THEME_KEY).ok().flatten())
         .map(|v| ThemeName::from_str(&v))
-        .unwrap_or(ThemeName::AmethystHaze)
-}
-
-/// Read the stored mode from localStorage (defaults to Light).
-pub fn get_stored_mode() -> Mode {
-    local_storage()
-        .and_then(|s| s.get_item(MODE_KEY).ok().flatten())
-        .map(|v| Mode::from_str(&v))
-        .unwrap_or(Mode::Light)
+        .unwrap_or(ThemeName::Swiss)
 }
 
 /// Write theme to localStorage.
 fn set_stored_theme(theme: ThemeName) {
     if let Some(s) = local_storage() {
         let _ = s.set_item(THEME_KEY, theme.as_str());
-    }
-}
-
-/// Write mode to localStorage.
-fn set_stored_mode(mode: Mode) {
-    if let Some(s) = local_storage() {
-        let _ = s.set_item(MODE_KEY, mode.as_str());
     }
 }
 
@@ -263,27 +189,16 @@ pub fn apply_font_size(size: FontSize) {
     }
 }
 
-/// Apply theme + mode by toggling CSS classes on `<html>`.
-pub fn apply_theme(theme: ThemeName, mode: Mode) {
+/// Apply theme by toggling CSS classes on `<html>`.
+pub fn apply_theme(theme: ThemeName) {
     let Some(el) = document_element() else {
         return;
     };
     let cl = el.class_list();
-
-    // Remove all theme classes
     for t in ThemeName::ALL {
         let _ = cl.remove_1(t.as_str());
     }
-    // Remove dark class
-    let _ = cl.remove_1("dark");
-
-    // Apply theme
     let _ = cl.add_1(theme.as_str());
-
-    // Apply dark mode
-    if mode == Mode::Dark {
-        let _ = cl.add_1("dark");
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -292,24 +207,14 @@ pub fn apply_theme(theme: ThemeName, mode: Mode) {
 
 /// Call once at startup (before mount) to apply stored preferences.
 pub fn initialize_theme() {
-    let theme = get_stored_theme();
-    let mode = get_stored_mode();
-    apply_theme(theme, mode);
+    apply_theme(get_stored_theme());
     apply_font_size(get_stored_font_size());
 }
 
-/// Change and persist the theme (keeps current mode).
+/// Change and persist the theme.
 pub fn set_theme(theme: ThemeName) {
-    let mode = get_stored_mode();
     set_stored_theme(theme);
-    apply_theme(theme, mode);
-}
-
-/// Change and persist the mode (keeps current theme).
-pub fn set_mode(mode: Mode) {
-    let theme = get_stored_theme();
-    set_stored_mode(mode);
-    apply_theme(theme, mode);
+    apply_theme(theme);
 }
 
 /// Change and persist the font size.
@@ -326,24 +231,12 @@ mod tests {
 
     #[test]
     fn theme_as_str_returns_css_class() {
-        assert_eq!(ThemeName::AmethystHaze.as_str(), "amethyst-haze");
-        assert_eq!(ThemeName::SolarDusk.as_str(), "solar-dusk");
-        assert_eq!(ThemeName::Nature.as_str(), "nature");
         assert_eq!(ThemeName::Swiss.as_str(), "swiss");
-        assert_eq!(
-            ThemeName::CassetteFuturism.as_str(),
-            "cassette-futurism"
-        );
+        assert_eq!(ThemeName::CassetteFuturism.as_str(), "cassette-futurism");
     }
 
     #[test]
     fn theme_from_str_known_values() {
-        assert_eq!(
-            ThemeName::from_str("amethyst-haze"),
-            ThemeName::AmethystHaze
-        );
-        assert_eq!(ThemeName::from_str("solar-dusk"), ThemeName::SolarDusk);
-        assert_eq!(ThemeName::from_str("nature"), ThemeName::Nature);
         assert_eq!(ThemeName::from_str("swiss"), ThemeName::Swiss);
         assert_eq!(
             ThemeName::from_str("cassette-futurism"),
@@ -352,10 +245,10 @@ mod tests {
     }
 
     #[test]
-    fn theme_from_str_unknown_defaults_to_amethyst_haze() {
-        assert_eq!(ThemeName::from_str(""), ThemeName::AmethystHaze);
-        assert_eq!(ThemeName::from_str("neon-glow"), ThemeName::AmethystHaze);
-        assert_eq!(ThemeName::from_str("NATURE"), ThemeName::AmethystHaze);
+    fn theme_from_str_unknown_defaults_to_swiss() {
+        assert_eq!(ThemeName::from_str(""), ThemeName::Swiss);
+        assert_eq!(ThemeName::from_str("neon-glow"), ThemeName::Swiss);
+        assert_eq!(ThemeName::from_str("NATURE"), ThemeName::Swiss);
     }
 
     #[test]
@@ -366,15 +259,12 @@ mod tests {
     }
 
     #[test]
-    fn theme_all_has_five_variants() {
-        assert_eq!(ThemeName::ALL.len(), 5);
+    fn theme_all_has_two_variants() {
+        assert_eq!(ThemeName::ALL.len(), 2);
     }
 
     #[test]
     fn theme_display_name_is_human_readable() {
-        assert_eq!(ThemeName::AmethystHaze.display_name(), "Amethyst Haze");
-        assert_eq!(ThemeName::SolarDusk.display_name(), "Solar Dusk");
-        assert_eq!(ThemeName::Nature.display_name(), "Nature");
         assert_eq!(ThemeName::Swiss.display_name(), "Swiss");
         assert_eq!(
             ThemeName::CassetteFuturism.display_name(),
@@ -387,43 +277,5 @@ mod tests {
         for theme in ThemeName::ALL {
             assert!(!theme.description().is_empty());
         }
-    }
-
-    // -- Mode ---------------------------------------------------------------
-
-    #[test]
-    fn mode_as_str() {
-        assert_eq!(Mode::Light.as_str(), "light");
-        assert_eq!(Mode::Dark.as_str(), "dark");
-    }
-
-    #[test]
-    fn mode_from_str_known_values() {
-        assert_eq!(Mode::from_str("light"), Mode::Light);
-        assert_eq!(Mode::from_str("dark"), Mode::Dark);
-    }
-
-    #[test]
-    fn mode_from_str_unknown_defaults_to_light() {
-        assert_eq!(Mode::from_str(""), Mode::Light);
-        assert_eq!(Mode::from_str("auto"), Mode::Light);
-    }
-
-    #[test]
-    fn mode_round_trip_through_str() {
-        assert_eq!(Mode::from_str(Mode::Light.as_str()), Mode::Light);
-        assert_eq!(Mode::from_str(Mode::Dark.as_str()), Mode::Dark);
-    }
-
-    #[test]
-    fn mode_display_name() {
-        assert_eq!(Mode::Light.display_name(), "Light");
-        assert_eq!(Mode::Dark.display_name(), "Dark");
-    }
-
-    #[test]
-    fn mode_description_not_empty() {
-        assert!(!Mode::Light.description().is_empty());
-        assert!(!Mode::Dark.description().is_empty());
     }
 }

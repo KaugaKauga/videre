@@ -1,0 +1,567 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   VIDERE — Swiss Theme
+   ═══════════════════════════════════════════════════════════════════════════
+   International Typographic Style. SBB railway signage. Dieter Rams.
+   Signal red on achromatic. Helvetica. The grid. Precision.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ═══════════════════════════════════════════════════════════════════════════
+
+   §22  SWISS — STRUCTURAL OVERRIDES
+
+   Everything below is scoped to `.swiss` on <html>.
+   This is NOT just a colour swap — it's a full aesthetic transformation
+   inspired by the International Typographic Style, SBB railway signage,
+   and Dieter Rams' design principles.
+
+   Signal red on achromatic.  Helvetica.  The grid.  Precision.
+
+   ═══════════════════════════════════════════════════════════════════════════
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 22 a · Selection & Focus ────────────────────────────────────────────── */
+
+.swiss ::selection {
+    background: oklch(from var(--primary) l c h / 0.16);
+    color: var(--foreground);
+}
+.swiss *:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+/* ── 22 b · Scrollbars ───────────────────────────────────────────────────── */
+
+.swiss ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.swiss ::-webkit-scrollbar-track {
+    background: transparent;
+}
+.swiss ::-webkit-scrollbar-thumb {
+    background: oklch(from var(--muted-foreground) l c h / 0.22);
+    border-radius: 0;
+}
+.swiss ::-webkit-scrollbar-thumb:hover {
+    background: oklch(from var(--primary) l c h / 0.45);
+}
+
+/* ── 22 c · Typography ───────────────────────────────────────────────────── */
+/*    Large type tight, small type open — the core Swiss principle.          */
+
+.swiss h1,
+.swiss h2 {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+}
+.swiss h3 {
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+.swiss .sidebar-group-label,
+.swiss .recents-heading {
+    font-size: var(--fs-ui-sm);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+/* ── 22 d · Sidebar ──────────────────────────────────────────────────────── */
+/*    Red accent strip on the left edge — the signature mark.               */
+
+.swiss .sidebar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--primary);
+    z-index: 10;
+}
+.swiss .sidebar-title {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    font-size: 0.9375rem;
+}
+.swiss .sidebar-menu-button {
+    border-radius: 0;
+    transition:
+        background-color 0.08s ease,
+        color 0.08s ease;
+}
+/* Red marker that slides in on hover — like a ruler tick mark */
+.swiss .sidebar-menu-button::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 2px;
+    height: 60%;
+    transform: translateY(-50%) scaleY(0);
+    transform-origin: center;
+    background: var(--primary);
+    transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.swiss .sidebar-menu-button:hover::before {
+    transform: translateY(-50%) scaleY(1);
+}
+.swiss .sidebar-menu-button:hover {
+    background: oklch(from var(--primary) l c h / 0.05);
+    color: var(--foreground);
+}
+.swiss .sidebar-menu-button:hover svg {
+    color: var(--primary);
+}
+.swiss .sidebar-bottom-section {
+    border-top: 1px solid var(--sidebar-border);
+}
+
+/* ── 22 e · Tab Bar ──────────────────────────────────────────────────────── */
+/*    Bold bottom rule; the active tab's indicator becomes a vivid red.     */
+
+.swiss .tab-bar {
+    border-bottom: none;
+}
+.swiss .tab-bar::after {
+    content: "";
+    flex: 1;
+    align-self: stretch;
+    border-bottom: 1px solid var(--border);
+}
+.swiss .tab {
+    border-right-color: oklch(from var(--border) l c h / 0.35);
+    border-bottom: 1px solid var(--border);
+    transition: none;
+}
+.swiss .tab:hover {
+    background: transparent;
+}
+.swiss .tab-label {
+    position: relative;
+    letter-spacing: 0.01em;
+}
+/* Red underline slides in on hover — scoped to label text width */
+.swiss .tab-label::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.swiss .tab:hover .tab-label::after {
+    transform: scaleX(1);
+}
+/* Active tab: merge into content, persistent red underline */
+.swiss .tab.active {
+    background: var(--background);
+    border-bottom-color: var(--background);
+}
+.swiss .tab.active .tab-label::after {
+    transform: scaleX(1);
+}
+.swiss .tab.active .tab-label {
+    -webkit-text-stroke: 0.4px currentColor;
+}
+.swiss .tab-indicator {
+    display: none;
+}
+.swiss .tab-close:hover {
+    background: oklch(from var(--primary) l c h / 0.08);
+    color: var(--primary);
+}
+
+/* ── 22 f · Cards ────────────────────────────────────────────────────────── */
+
+.swiss .card {
+    border-radius: 2px;
+    box-shadow: none;
+}
+
+/* ── 22 g · Inputs ───────────────────────────────────────────────────────── */
+
+.swiss input[type="text"],
+.swiss input[type="password"],
+.swiss input[type="number"],
+.swiss input[type="email"] {
+    border-radius: 2px;
+    height: 2.375rem;
+    font-size: 0.875rem;
+}
+.swiss input:focus {
+    box-shadow: 0 0 0 2px oklch(from var(--ring) l c h / 0.12);
+}
+.swiss label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+}
+
+/* ── 22 h · Buttons ──────────────────────────────────────────────────────── */
+/*    Uppercase, tracked, sharp.  Primary gets a micro scale on press.      */
+
+.swiss .btn {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    border-radius: 2px;
+    transition:
+        background-color 0.08s ease,
+        transform 0.08s ease,
+        opacity 0.08s ease;
+}
+.swiss .btn-primary:hover {
+    opacity: 1;
+    filter: brightness(1.12);
+}
+.swiss .btn-primary:active {
+    transform: scale(0.975);
+}
+.swiss .btn-secondary {
+    border-color: var(--border);
+}
+.swiss .btn-secondary:hover {
+    border-color: oklch(from var(--primary) l c h / 0.3);
+}
+.swiss .btn-ghost:hover {
+    background: oklch(from var(--primary) l c h / 0.05);
+}
+
+/* ── 22 i · Status Messages ──────────────────────────────────────────────── */
+/*    Bold left accent bar instead of just background tinting.              */
+
+.swiss .status-msg {
+    border-radius: 2px;
+    border-left: 3px solid currentColor;
+    background: oklch(from var(--muted) l c h / 0.5);
+}
+
+/* ── 22 j · Data Table ───────────────────────────────────────────────────── */
+/*    Thick black header rule, precise hairline rows, red hover tint.       */
+
+.swiss .data-table {
+    font-size: var(--fs-ui);
+}
+.swiss .data-table-th {
+    font-size: var(--fs-ui-sm);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    border-bottom: 2px solid var(--foreground);
+    color: var(--foreground);
+    padding: 0.625rem 1rem;
+}
+.swiss .data-table-th:hover {
+    color: var(--primary);
+}
+.swiss .data-table-row {
+    border-bottom-color: oklch(from var(--border) l c h / 0.55);
+}
+.swiss .data-table-row:hover {
+    background: oklch(from var(--primary) l c h / 0.035);
+}
+.swiss .data-table-td {
+    font-variant-numeric: tabular-nums;
+}
+.swiss .fk-link {
+    text-decoration: none;
+    border-bottom: 1px solid oklch(from var(--primary) l c h / 0.3);
+    transition:
+        border-color 0.08s ease,
+        color 0.08s ease;
+}
+.swiss .fk-link:hover {
+    text-decoration: none;
+    border-bottom-color: var(--primary);
+    opacity: 1;
+}
+.swiss .null-value {
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    opacity: 0.45;
+    letter-spacing: 0.04em;
+}
+.swiss .sort-indicator {
+    color: var(--primary);
+}
+
+/* ── 22 k · Table Page ───────────────────────────────────────────────────── */
+
+.swiss .table-page-header {
+    border-bottom: 2px solid oklch(from var(--foreground) l c h / 0.12);
+    padding: 1.125rem 1.5rem;
+}
+.swiss .table-page-title {
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+}
+.swiss .table-page-footer {
+    border-top: 2px solid oklch(from var(--foreground) l c h / 0.08);
+}
+
+/* ── 22 l · Connection Page ──────────────────────────────────────────────── */
+/*    Grid background evokes engineering graph paper.                        */
+
+.swiss .connection-page {
+    background-image:
+        radial-gradient(
+            circle 0.75px at center,
+            oklch(from var(--foreground) l c h / 0.07) 0.75px,
+            transparent 0.75px
+        ),
+        linear-gradient(
+            oklch(from var(--foreground) l c h / 0.05) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            oklch(from var(--foreground) l c h / 0.05) 1px,
+            transparent 1px
+        );
+    background-size: 2.5rem 2.5rem;
+    background-position: -1px -1px;
+}
+.swiss .connection-card {
+    border-top: 3px solid var(--primary);
+    border-radius: 0 0 2px 2px;
+}
+.swiss .connection-title-row h1 {
+    font-size: 1.125rem;
+}
+.swiss .recents-heading {
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+}
+
+/* ── 22 m · Empty States ─────────────────────────────────────────────────── */
+/*    Grid + a red crosshair at the center — like an engineering blueprint. */
+
+.swiss .empty-state {
+    position: relative;
+    background-image:
+        radial-gradient(
+            circle 0.75px at center,
+            oklch(from var(--foreground) l c h / 0.06) 0.75px,
+            transparent 0.75px
+        ),
+        linear-gradient(
+            oklch(from var(--foreground) l c h / 0.045) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            oklch(from var(--foreground) l c h / 0.045) 1px,
+            transparent 1px
+        );
+    background-size: 2.5rem 2.5rem;
+    background-position: -1px -1px;
+}
+/* Crosshair — horizontal arm */
+.swiss .empty-state::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 48px;
+    height: 1px;
+    background: oklch(from var(--primary) l c h / 0.18);
+    transform: translateX(-50%);
+    pointer-events: none;
+    animation: swiss-crosshair-h 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+/* Crosshair — vertical arm */
+.swiss .empty-state::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 48px;
+    background: oklch(from var(--primary) l c h / 0.18);
+    transform: translateY(-50%);
+    pointer-events: none;
+    animation: swiss-crosshair-v 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+.swiss .empty-state-icon {
+    color: var(--primary);
+    opacity: 0.55;
+}
+.swiss .empty-state h3 {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 1rem;
+}
+
+/* ── 22 n · Shortcuts box ────────────────────────────────────────────────── */
+
+.swiss .shortcuts-box {
+    border-radius: 2px;
+    border: 1px solid oklch(from var(--foreground) l c h / 0.1);
+    background: oklch(from var(--muted) l c h / 0.35);
+}
+.swiss .shortcuts-title {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.6875rem;
+}
+.swiss kbd {
+    border-radius: 2px;
+    font-weight: 500;
+    border-color: oklch(from var(--foreground) l c h / 0.15);
+}
+
+/* ── 22 o · FK Detail Panel ──────────────────────────────────────────────── */
+
+.swiss .row-detail-panel {
+    border-radius: 0;
+    box-shadow: -6px 0 24px oklch(0 0 0 / 0.1);
+    border-top: 3px solid var(--primary);
+}
+.swiss .row-detail-header h3 {
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.swiss .row-detail-label {
+    font-size: var(--fs-ui-sm);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+}
+.swiss .row-detail-backdrop.open {
+    background: oklch(0 0 0 / 0.2);
+}
+
+/* ── 22 p · Badges ───────────────────────────────────────────────────────── */
+
+.swiss .badge {
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 0.1875rem 0.5rem;
+}
+
+/* ── 22 q · Roles Page ───────────────────────────────────────────────────── */
+
+.swiss .roles-section-title {
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-weight: 700;
+}
+.swiss .role-detail-heading {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    font-size: 0.6875rem;
+}
+.swiss .role-prop {
+    border-bottom: 1px solid oklch(from var(--border) l c h / 0.4);
+    padding: 0.375rem 0;
+}
+.swiss .role-prop:last-child {
+    border-bottom: none;
+}
+
+/* ── 22 r · Settings ─────────────────────────────────────────────────────── */
+
+.swiss .settings-card {
+    border-radius: 2px;
+    box-shadow: none;
+}
+.swiss .settings-header h2 {
+    letter-spacing: -0.02em;
+}
+.swiss .mode-btn {
+    border-radius: 2px;
+}
+.swiss .mode-icon {
+    border-radius: 2px;
+}
+.swiss .theme-card {
+    border-radius: 2px;
+}
+.swiss .theme-swatch {
+    border-radius: 1px;
+}
+.swiss .mode-btn h4,
+.swiss .theme-card h4 {
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+/* ── 22 s · Content Entrance Animation ───────────────────────────────────── */
+/*    Quick, mechanical fade-up.  Feels precise, not bouncy.                */
+
+.swiss .card-content,
+.swiss .table-page-body,
+.swiss .settings-container,
+.swiss .roles-body {
+    animation: swiss-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── 22 t · Misc Structural ──────────────────────────────────────────────── */
+
+.swiss .json-value {
+    border-radius: 2px;
+    font-size: 0.75rem;
+}
+.swiss .table-page-error {
+    border-radius: 2px;
+    border-left: 3px solid var(--error);
+}
+.swiss .priv-row {
+    border-bottom-color: oklch(from var(--border) l c h / 0.4);
+}
+
+/* ── 22 · Keyframes ──────────────────────────────────────────────────────── */
+
+@keyframes swiss-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes swiss-slide-in {
+    from {
+        transform: scaleY(0);
+    }
+    to {
+        transform: scaleY(1);
+    }
+}
+@keyframes swiss-crosshair-h {
+    from {
+        width: 0;
+    }
+    to {
+        width: 48px;
+    }
+}
+@keyframes swiss-crosshair-v {
+    from {
+        height: 0;
+    }
+    to {
+        height: 48px;
+    }
+}

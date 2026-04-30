@@ -1,8 +1,8 @@
-//! Settings page — theme picker, light/dark mode toggle, and about section.
+//! Settings page — theme picker and about section.
 
 use leptos::prelude::*;
 
-use crate::theme::{self, FontSize, Mode, ThemeName};
+use crate::theme::{self, FontSize, ThemeName};
 
 // ---------------------------------------------------------------------------
 // Settings page component
@@ -11,17 +11,11 @@ use crate::theme::{self, FontSize, Mode, ThemeName};
 #[component]
 pub fn SettingsPage() -> impl IntoView {
     let (current_theme, set_current_theme) = signal(theme::get_stored_theme());
-    let (current_mode, set_current_mode) = signal(theme::get_stored_mode());
     let (current_font_size, set_current_font_size) = signal(theme::get_stored_font_size());
 
     let handle_theme_change = move |t: ThemeName| {
         theme::set_theme(t);
         set_current_theme.set(t);
-    };
-
-    let handle_mode_change = move |m: Mode| {
-        theme::set_mode(m);
-        set_current_mode.set(m);
     };
 
     let handle_font_size_change = move |s: FontSize| {
@@ -43,15 +37,6 @@ pub fn SettingsPage() -> impl IntoView {
                     <div class="settings-card-title">
                         {palette_icon()}
                         <h3>"Appearance"</h3>
-                    </div>
-
-                    // Mode selection
-                    <div class="settings-section">
-                        <p class="text-sm text-muted">"Choose between light and dark mode"</p>
-                        <div class="mode-grid">
-                            {Mode::Light.render_button(current_mode, handle_mode_change)}
-                            {Mode::Dark.render_button(current_mode, handle_mode_change)}
-                        </div>
                     </div>
 
                     // Font size selection
@@ -129,41 +114,6 @@ impl FontSize {
 }
 
 // ---------------------------------------------------------------------------
-// Mode button
-// ---------------------------------------------------------------------------
-
-impl Mode {
-    fn render_button(
-        self,
-        current: ReadSignal<Mode>,
-        on_click: impl Fn(Mode) + 'static + Copy,
-    ) -> impl IntoView {
-        let is_active = move || current.get() == self;
-
-        view! {
-            <button
-                class="mode-btn"
-                class:active=is_active
-                on:click=move |_| on_click(self)
-            >
-                <div class="mode-btn-inner">
-                    <div class="mode-icon" class:active=is_active>
-                        {match self {
-                            Mode::Light => sun_icon().into_any(),
-                            Mode::Dark => moon_icon().into_any(),
-                        }}
-                    </div>
-                    <div>
-                        <h4>{self.display_name()}</h4>
-                        <p class="text-xs text-muted">{self.description()}</p>
-                    </div>
-                </div>
-            </button>
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Theme card
 // ---------------------------------------------------------------------------
 
@@ -211,21 +161,6 @@ impl ThemeName {
     /// Returns (primary, accent, muted) CSS color strings for the preview swatches.
     fn preview_colors(self) -> (&'static str, &'static str, &'static str) {
         match self {
-            Self::AmethystHaze => (
-                "oklch(0.55 0.15 295)",
-                "oklch(0.70 0.14 350)",
-                "oklch(0.90 0.03 300)",
-            ),
-            Self::SolarDusk => (
-                "oklch(0.60 0.16 55)",
-                "oklch(0.80 0.14 90)",
-                "oklch(0.92 0.04 70)",
-            ),
-            Self::Nature => (
-                "oklch(0.55 0.14 155)",
-                "oklch(0.72 0.12 160)",
-                "oklch(0.92 0.04 155)",
-            ),
             Self::Swiss => (
                 "oklch(0.528 0.216 27.33)",
                 "oklch(0.15 0 0)",
@@ -243,50 +178,6 @@ impl ThemeName {
 // ---------------------------------------------------------------------------
 // Inline SVG icons
 // ---------------------------------------------------------------------------
-
-fn sun_icon() -> impl IntoView {
-    view! {
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-        >
-            <circle cx="12" cy="12" r="4"></circle>
-            <path d="M12 2v2"></path>
-            <path d="M12 20v2"></path>
-            <path d="m4.93 4.93 1.41 1.41"></path>
-            <path d="m17.66 17.66 1.41 1.41"></path>
-            <path d="M2 12h2"></path>
-            <path d="M20 12h2"></path>
-            <path d="m6.34 17.66-1.41 1.41"></path>
-            <path d="m19.07 4.93-1.41 1.41"></path>
-        </svg>
-    }
-}
-
-fn moon_icon() -> impl IntoView {
-    view! {
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-        >
-            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
-        </svg>
-    }
-}
 
 fn palette_icon() -> impl IntoView {
     view! {
