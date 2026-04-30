@@ -4,9 +4,9 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::components::data_table::DataTable;
-use crate::stores::db_store::DbStore;
 use crate::components::drawer::Drawer;
 use crate::components::icons;
+use crate::stores::db_store::DbStore;
 use crate::tauri;
 use crate::types::{ForeignKeyInfo, RowData, TableData};
 
@@ -226,6 +226,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                     // Pagination footer
                     {if !is_empty {
                         let tp = total_pages.get();
+                        let is_last_page = move || page.get() + 1 >= tp;
                         Some(view! {
                             <div class="table-page-footer">
                                 <span class="text-muted text-sm">
@@ -244,7 +245,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                                     </span>
                                     <button
                                         class="btn btn-ghost btn-sm"
-                                        disabled=move || page.get() + 1 >= tp
+                                        disabled=is_last_page
                                         on:click=on_next.clone()
                                     >
                                         "Next \u{203A}"
