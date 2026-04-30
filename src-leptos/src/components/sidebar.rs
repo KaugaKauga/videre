@@ -2,8 +2,8 @@ use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::PointerEvent;
 
-use crate::stores::db_store::DbStore;
 use crate::components::icons;
+use crate::stores::db_store::DbStore;
 use crate::stores::tab_store::{TabStore, TabType};
 use crate::theme;
 
@@ -29,8 +29,8 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     // ---- Resize state ------------------------------------------------------
-    // `width_px`: Some(n) = user-set, None = fall back to CSS default (which
-    // scales with --fs-ui).  `drag_start`: (pointer_x, width_at_drag_start).
+    // `width_px`: Some(n) = user-set, None = fall back to CSS default (15rem,
+    // scales with root font-size).  `drag_start`: (pointer_x, width_at_drag_start).
     let width_px = RwSignal::new(theme::get_stored_sidebar_width());
     let drag_start = RwSignal::new(None::<(f64, f64)>);
 
@@ -45,7 +45,10 @@ pub fn Sidebar() -> impl IntoView {
                 .unwrap_or(240.0)
         });
         drag_start.set(Some((e.client_x() as f64, current_w)));
-        if let Some(target) = e.target().and_then(|t| t.dyn_into::<web_sys::Element>().ok()) {
+        if let Some(target) = e
+            .target()
+            .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+        {
             let _ = target.set_pointer_capture(e.pointer_id());
         }
         e.prevent_default();

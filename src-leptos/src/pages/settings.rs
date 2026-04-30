@@ -41,7 +41,7 @@ pub fn SettingsPage() -> impl IntoView {
 
                     // Font size selection
                     <div class="settings-section">
-                        <p class="text-sm text-muted">"Adjust the font size for sidebar items, tabs, and table rows"</p>
+                        <p class="text-sm text-muted">"Adjust the overall UI font size"</p>
                         <div class="mode-grid">
                             {FontSize::ALL.map(|s| s.render_button(current_font_size, handle_font_size_change)).collect_view()}
                         </div>
@@ -87,10 +87,10 @@ impl FontSize {
     ) -> impl IntoView {
         let is_active = move || current.get() == self;
         let preview_size = match self {
-            FontSize::Small => "0.75rem",
-            FontSize::Normal => "0.8125rem",
-            FontSize::Large => "0.9375rem",
-            FontSize::XLarge => "1.0625rem",
+            FontSize::Small => "13px",
+            FontSize::Normal => "14px",
+            FontSize::Large => "16px",
+            FontSize::XLarge => "18px",
         };
 
         view! {
