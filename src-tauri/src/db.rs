@@ -5,6 +5,8 @@ use tokio::sync::Mutex;
 use tokio_postgres::{Client, NoTls};
 use uuid::Uuid;
 
+use crate::pg::{qualified_name, quote_ident, ColumnPlan};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionConfig {
     pub host: String,
@@ -191,6 +193,19 @@ pub struct TableData {
     pub total_rows: i64,
 }
 
+/// Ask the server for the shape of `SELECT *` before reading any rows.
+///
+/// `prepare` only parses and plans, so this is cheaper than the
+/// `information_schema.columns` lookup it replaces — and it gives us the column
+/// types as well as the names, from the exact statement we are about to run.
+async fn column_plan(client: &Client, relation: &str) -> Result<ColumnPlan, String> {
+    let stmt = client
+        .prepare(&format!("SELECT * FROM {relation}"))
+        .await
+        .map_err(|e| format!("Failed to inspect columns: {e}"))?;
+    Ok(ColumnPlan::from_columns(stmt.columns()))
+}
+
 #[tauri::command]
 pub async fn get_table_data(
     table_name: String,
@@ -200,98 +215,46 @@ pub async fn get_table_data(
     state: State<'_, DbState>,
 ) -> Result<TableData, String> {
     let client_lock = state.client.lock().await;
+    let client = client_lock
+        .as_ref()
+        .ok_or_else(|| "Not connected to database".to_string())?;
 
-    match client_lock.as_ref() {
-        Some(client) => {
-            let limit = limit.unwrap_or(100);
-            let offset = offset.unwrap_or(0);
+    let limit = limit.unwrap_or(100);
+    let offset = offset.unwrap_or(0);
 
-            // Get column information
-            let column_query = format!(
-                "SELECT column_name FROM information_schema.columns
-                 WHERE table_schema = $1 AND table_name = $2
-                 ORDER BY ordinal_position"
-            );
+    let relation = qualified_name(&schema, &table_name)?;
+    let plan = column_plan(client, &relation).await?;
 
-            let columns: Vec<String> =
-                match client.query(&column_query, &[&schema, &table_name]).await {
-                    Ok(rows) => rows.iter().map(|row| row.get(0)).collect(),
-                    Err(e) => return Err(format!("Failed to fetch columns: {}", e)),
-                };
-
-            // Get table data
-            let data_query = format!(
-                "SELECT * FROM \"{}\".\"{}\" LIMIT $1 OFFSET $2",
-                schema, table_name
-            );
-
-            let rows_result = match client.query(&data_query, &[&limit, &offset]).await {
-                Ok(rows) => rows,
-                Err(e) => return Err(format!("Failed to fetch data: {}", e)),
-            };
-
-            // Convert rows to JSON
-            let mut data_rows = Vec::new();
-            for row in rows_result {
-                let mut row_data = Vec::new();
-                for i in 0..columns.len() {
-                    // Try to get value as various types and convert to JSON
-                    let value: serde_json::Value = if let Ok(v) = row.try_get::<_, Option<Uuid>>(i)
-                    {
-                        // Handle UUID (including NULL)
-                        match v {
-                            Some(uuid) => serde_json::Value::String(uuid.to_string()),
-                            None => serde_json::Value::Null,
-                        }
-                    } else if let Ok(v) = row.try_get::<_, Option<String>>(i) {
-                        match v {
-                            Some(s) => serde_json::Value::String(s),
-                            None => serde_json::Value::Null,
-                        }
-                    } else if let Ok(v) = row.try_get::<_, Option<i32>>(i) {
-                        match v {
-                            Some(n) => serde_json::Value::Number(n.into()),
-                            None => serde_json::Value::Null,
-                        }
-                    } else if let Ok(v) = row.try_get::<_, Option<i64>>(i) {
-                        match v {
-                            Some(n) => serde_json::Value::Number(n.into()),
-                            None => serde_json::Value::Null,
-                        }
-                    } else if let Ok(v) = row.try_get::<_, Option<f64>>(i) {
-                        match v {
-                            Some(f) => serde_json::json!(f),
-                            None => serde_json::Value::Null,
-                        }
-                    } else if let Ok(v) = row.try_get::<_, Option<bool>>(i) {
-                        match v {
-                            Some(b) => serde_json::Value::Bool(b),
-                            None => serde_json::Value::Null,
-                        }
-                    } else {
-                        // If we can't determine the type, return NULL
-                        serde_json::Value::Null
-                    };
-                    row_data.push(value);
-                }
-                data_rows.push(row_data);
-            }
-
-            // Get total count
-            let count_query = format!("SELECT COUNT(*) FROM \"{}\".\"{}\"", schema, table_name);
-            let total_rows: i64 = match client.query_one(&count_query, &[]).await {
-                Ok(row) => row.get(0),
-                Err(e) => return Err(format!("Failed to count rows: {}", e)),
-            };
-
-            Ok(TableData {
-                columns,
-                rows: data_rows,
-                total_rows,
-            })
-        }
-        None => Err("Not connected to database".to_string()),
+    // `CREATE TABLE t ()` is legal; an empty SELECT list is not.
+    if plan.is_empty() {
+        return Ok(TableData {
+            columns: Vec::new(),
+            rows: Vec::new(),
+            total_rows: 0,
+        });
     }
+
+    let data_query = format!(
+        "SELECT {} FROM {relation} LIMIT $1 OFFSET $2",
+        plan.select_list()?
+    );
+    let rows = client
+        .query(&data_query, &[&limit, &offset])
+        .await
+        .map_err(|e| format!("Failed to fetch data: {e}"))?;
+
+    let count_query = format!("SELECT COUNT(*) FROM {relation}");
+    let total_rows: i64 = client
+        .query_one(&count_query, &[])
+        .await
+        .map_err(|e| format!("Failed to count rows: {e}"))?
+        .get(0);
+
+    Ok(TableData {
+        columns: plan.names(),
+        rows: rows.iter().map(|row| plan.decode_row(row)).collect(),
+        total_rows,
+    })
 }
 
 #[tauri::command]
@@ -357,99 +320,55 @@ pub async fn get_row_by_pk(
     state: State<'_, DbState>,
 ) -> Result<RowData, String> {
     let client_lock = state.client.lock().await;
+    let client = client_lock
+        .as_ref()
+        .ok_or_else(|| "Not connected to database".to_string())?;
 
-    match client_lock.as_ref() {
-        Some(client) => {
-            // Get column information
-            let column_query = format!(
-                "SELECT column_name FROM information_schema.columns
-                 WHERE table_schema = $1 AND table_name = $2
-                 ORDER BY ordinal_position"
-            );
+    let relation = qualified_name(&schema, &table_name)?;
+    let plan = column_plan(client, &relation).await?;
 
-            let columns: Vec<String> =
-                match client.query(&column_query, &[&schema, &table_name]).await {
-                    Ok(rows) => rows.iter().map(|row| row.get(0)).collect(),
-                    Err(e) => return Err(format!("Failed to fetch columns: {}", e)),
-                };
-
-            // Build query based on pk_value type
-            let data_query = format!(
-                "SELECT * FROM \"{}\".\"{}\" WHERE \"{}\" = $1 LIMIT 1",
-                schema, table_name, pk_column
-            );
-
-            // Execute query with appropriate type
-            let row_result = match &pk_value {
-                serde_json::Value::Number(n) => {
-                    if let Some(i) = n.as_i64() {
-                        client.query_opt(&data_query, &[&(i as i32)]).await
-                    } else if let Some(f) = n.as_f64() {
-                        client.query_opt(&data_query, &[&f]).await
-                    } else {
-                        return Err("Invalid number type".to_string());
-                    }
-                }
-                serde_json::Value::String(s) => {
-                    // Try parsing as UUID first
-                    if let Ok(uuid) = s.parse::<Uuid>() {
-                        client.query_opt(&data_query, &[&uuid]).await
-                    } else {
-                        client.query_opt(&data_query, &[&s]).await
-                    }
-                }
-                _ => return Err("Unsupported primary key type".to_string()),
-            };
-
-            let row = match row_result {
-                Ok(Some(row)) => row,
-                Ok(None) => return Err("Row not found".to_string()),
-                Err(e) => return Err(format!("Failed to fetch row: {}", e)),
-            };
-
-            // Convert row to JSON values
-            let mut values = Vec::new();
-            for i in 0..columns.len() {
-                let value: serde_json::Value = if let Ok(v) = row.try_get::<_, Option<Uuid>>(i) {
-                    match v {
-                        Some(uuid) => serde_json::Value::String(uuid.to_string()),
-                        None => serde_json::Value::Null,
-                    }
-                } else if let Ok(v) = row.try_get::<_, Option<String>>(i) {
-                    match v {
-                        Some(s) => serde_json::Value::String(s),
-                        None => serde_json::Value::Null,
-                    }
-                } else if let Ok(v) = row.try_get::<_, Option<i32>>(i) {
-                    match v {
-                        Some(n) => serde_json::Value::Number(n.into()),
-                        None => serde_json::Value::Null,
-                    }
-                } else if let Ok(v) = row.try_get::<_, Option<i64>>(i) {
-                    match v {
-                        Some(n) => serde_json::Value::Number(n.into()),
-                        None => serde_json::Value::Null,
-                    }
-                } else if let Ok(v) = row.try_get::<_, Option<f64>>(i) {
-                    match v {
-                        Some(f) => serde_json::json!(f),
-                        None => serde_json::Value::Null,
-                    }
-                } else if let Ok(v) = row.try_get::<_, Option<bool>>(i) {
-                    match v {
-                        Some(b) => serde_json::Value::Bool(b),
-                        None => serde_json::Value::Null,
-                    }
-                } else {
-                    serde_json::Value::Null
-                };
-                values.push(value);
-            }
-
-            Ok(RowData { columns, values })
-        }
-        None => Err("Not connected to database".to_string()),
+    if plan.is_empty() {
+        return Err(format!("{relation} has no columns"));
     }
+
+    let data_query = format!(
+        "SELECT {} FROM {relation} WHERE {} = $1 LIMIT 1",
+        plan.select_list()?,
+        quote_ident(&pk_column)?
+    );
+
+    // Execute query with appropriate type
+    let row_result = match &pk_value {
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                client.query_opt(&data_query, &[&(i as i32)]).await
+            } else if let Some(f) = n.as_f64() {
+                client.query_opt(&data_query, &[&f]).await
+            } else {
+                return Err("Invalid number type".to_string());
+            }
+        }
+        serde_json::Value::String(s) => {
+            // Try parsing as UUID first
+            if let Ok(uuid) = s.parse::<Uuid>() {
+                client.query_opt(&data_query, &[&uuid]).await
+            } else {
+                client.query_opt(&data_query, &[&s]).await
+            }
+        }
+        _ => return Err("Unsupported primary key type".to_string()),
+    };
+
+    let row = match row_result {
+        Ok(Some(row)) => row,
+        Ok(None) => return Err("Row not found".to_string()),
+        Err(e) => return Err(format!("Failed to fetch row: {e}")),
+    };
+
+    Ok(RowData {
+        columns: plan.names(),
+        values: plan.decode_row(&row),
+    })
 }
 
 #[tauri::command]
@@ -609,4 +528,159 @@ pub async fn disconnect_db(state: State<'_, DbState>) -> Result<(), String> {
     *config_lock = None;
 
     Ok(())
+}
+
+/// Tests that need a live server.
+///
+/// Ignored by default so `cargo test` stays offline. Bring the fixture up with
+/// `docker-compose up -d`, then:
+///
+/// ```text
+/// cargo test --lib live -- --ignored
+/// ```
+#[cfg(test)]
+mod live {
+    use super::*;
+    use serde_json::Value;
+
+    async fn connect() -> Client {
+        let conn_str = std::env::var("VIDERE_TEST_DB").unwrap_or_else(|_| {
+            "host=localhost port=5432 dbname=videre_test user=videre password=videre".to_string()
+        });
+        let (client, connection) = tokio_postgres::connect(&conn_str, NoTls)
+            .await
+            .expect("test database unreachable — is `docker-compose up -d` running?");
+        tokio::spawn(async move {
+            let _ = connection.await;
+        });
+        client
+    }
+
+    /// The reported bug: `created_at` is `timestamptz` in every seeded table, and
+    /// the old try_get chain had no arm for it, so it rendered as `null`.
+    #[tokio::test]
+    #[ignore]
+    async fn seeded_timestamps_are_no_longer_null() {
+        let client = connect().await;
+        let relation = qualified_name("public", "gods").unwrap();
+        let plan = column_plan(&client, &relation).await.unwrap();
+
+        let created_at = plan
+            .names()
+            .iter()
+            .position(|n| n == "created_at")
+            .expect("gods.created_at should exist");
+
+        let query = format!(
+            "SELECT {} FROM {relation} LIMIT 5",
+            plan.select_list().unwrap()
+        );
+        let rows = client.query(&query, &[]).await.unwrap();
+        assert!(!rows.is_empty(), "gods should have seed data");
+
+        for row in &rows {
+            let cell = &plan.decode_row(row)[created_at];
+            assert!(
+                matches!(cell, Value::String(s) if !s.is_empty()),
+                "created_at should render as a timestamp, got {cell:?}"
+            );
+        }
+    }
+
+    /// Every type that used to fall through to `Value::Null` must now come back
+    /// with a value — and a genuine NULL must still come back as `null`.
+    #[tokio::test]
+    #[ignore]
+    async fn no_type_silently_renders_as_null() {
+        let client = connect().await;
+        client
+            .batch_execute(
+                "DROP SCHEMA IF EXISTS videre_convert_test CASCADE;
+                 CREATE SCHEMA videre_convert_test;
+                 CREATE TYPE videre_convert_test.mood AS ENUM ('calm', 'wrathful');
+                 CREATE TABLE videre_convert_test.every_type (
+                     c_int2        smallint,
+                     c_int4        integer,
+                     c_int8        bigint,
+                     c_float4      real,
+                     c_float8      double precision,
+                     c_numeric     numeric(38,10),
+                     c_bool        boolean,
+                     c_text        text,
+                     c_varchar     varchar(20),
+                     c_uuid        uuid,
+                     c_timestamptz timestamp with time zone,
+                     c_timestamp   timestamp,
+                     c_date        date,
+                     c_time        time,
+                     c_interval    interval,
+                     c_json        json,
+                     c_jsonb       jsonb,
+                     c_bytea       bytea,
+                     c_inet        inet,
+                     c_text_arr    text[],
+                     c_enum        videre_convert_test.mood,
+                     c_always_null integer
+                 );
+                 INSERT INTO videre_convert_test.every_type VALUES (
+                     32767, 2147483647, 9223372036854775807,
+                     0.1, 2.5, 12345678901234567890.1234567890,
+                     true, 'text', 'varchar',
+                     '0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c',
+                     '2024-01-15 10:30:00+00', '2024-01-15 10:30:00',
+                     '2024-01-15', '10:30:00', '3 days 4 hours',
+                     '{\"a\":1}', '{\"b\":2}', '\\x48656c6c6f',
+                     '192.168.0.1', ARRAY['alpha','beta'], 'wrathful',
+                     NULL
+                 );",
+            )
+            .await
+            .unwrap();
+
+        let relation = qualified_name("videre_convert_test", "every_type").unwrap();
+        let plan = column_plan(&client, &relation).await.unwrap();
+        let query = format!("SELECT {} FROM {relation}", plan.select_list().unwrap());
+        let row = client.query_one(&query, &[]).await.unwrap();
+
+        let names = plan.names();
+        let values = plan.decode_row(&row);
+
+        for (name, value) in names.iter().zip(&values) {
+            if name == "c_always_null" {
+                // A real SQL NULL must still be null — that distinction is the
+                // whole point of the fix.
+                assert_eq!(*value, Value::Null, "{name} is genuinely NULL");
+            } else {
+                assert_ne!(*value, Value::Null, "{name} silently rendered as null");
+            }
+            if let Value::String(s) = value {
+                assert!(!s.starts_with("<unreadable"), "{name}: {s}");
+            }
+        }
+
+        let cell = |name: &str| values[names.iter().position(|n| n == name).unwrap()].clone();
+
+        // Natively decoded types keep their JSON type so the UI can align them.
+        assert_eq!(cell("c_int2"), Value::from(32767));
+        assert_eq!(cell("c_int8"), Value::from(9223372036854775807i64));
+        assert_eq!(cell("c_float4"), Value::from(0.1));
+        assert_eq!(cell("c_bool"), Value::Bool(true));
+
+        // `numeric` goes through text precisely so this precision survives.
+        assert_eq!(
+            cell("c_numeric"),
+            Value::String("12345678901234567890.1234567890".into())
+        );
+
+        // Server-rendered types read the way psql prints them.
+        assert_eq!(cell("c_date"), Value::String("2024-01-15".into()));
+        assert_eq!(cell("c_text_arr"), Value::String("{alpha,beta}".into()));
+        assert_eq!(cell("c_enum"), Value::String("wrathful".into()));
+        assert_eq!(cell("c_bytea"), Value::String("\\x48656c6c6f".into()));
+
+        client
+            .batch_execute("DROP SCHEMA videre_convert_test CASCADE;")
+            .await
+            .unwrap();
+    }
 }
