@@ -1,7 +1,9 @@
-mod db;
+mod commands;
 mod pg;
+mod state;
+mod types;
 
-use db::DbState;
+use state::DbState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -10,16 +12,16 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .manage(DbState::new())
         .invoke_handler(tauri::generate_handler![
-            db::test_connection,
-            db::connect_to_db,
-            db::get_tables,
-            db::get_table_data,
-            db::get_foreign_keys,
-            db::get_indexes,
-            db::get_roles,
-            db::get_table_privileges,
-            db::get_row_by_pk,
-            db::disconnect_db,
+            commands::test_connection,
+            commands::connect_to_db,
+            commands::get_tables,
+            commands::get_table_data,
+            commands::get_foreign_keys,
+            commands::get_indexes,
+            commands::get_roles,
+            commands::get_table_privileges,
+            commands::get_row_by_pk,
+            commands::disconnect_db,
         ])
         .setup(|app| {
             // On Windows/Linux, remove native decorations so our custom title bar
