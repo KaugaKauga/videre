@@ -487,10 +487,10 @@
 
 .cassette-futurism .data-table-wrap {
     border: 1px solid oklch(from var(--border) l c h / 0.5);
+    background: oklch(from var(--background) calc(l - 0.015) c h);
 }
 .cassette-futurism .data-table-th {
     background: oklch(from var(--background) calc(l - 0.015) c h);
-    box-shadow: 0 -1px 0 0 oklch(from var(--background) calc(l - 0.015) c h);
     font-family: var(--font-mono);
     font-size: var(--fs-ui-sm);
     font-weight: 700;
