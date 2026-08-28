@@ -137,6 +137,356 @@ mod live {
             .expect("test database unreachable — is `docker-compose up -d` running?")
     }
 
+    /// Mirrors the frontend's `format_value` in `data_table.rs`. What the user
+    /// actually sees in a cell.
+    fn rendered(value: &Value) -> String {
+        match value {
+            Value::Null => String::new(),
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
+            other => other.to_string(),
+        }
+    }
+
+    /// Every column type a Postgres inspector can realistically meet, paired
+    /// with the value we store in it. Declaration and value sit together so the
+    /// DDL and the INSERT can both be generated — adding a type is one line.
+    const TYPE_MATRIX: &[(&str, &str, &str)] = &[
+        // name, SQL type, SQL literal
+        ("c_bool", "boolean", "true"),
+        ("c_int2", "smallint", "32767"),
+        ("c_int4", "integer", "2147483647"),
+        ("c_int8", "bigint", "9223372036854775807"),
+        ("c_float4", "real", "0.1"),
+        ("c_float8", "double precision", "2.5"),
+        (
+            "c_numeric",
+            "numeric(38,10)",
+            "12345678901234567890.1234567890",
+        ),
+        ("c_numeric_plain", "numeric", "0.30000000000000004"),
+        ("c_money", "money", "'1234.56'"),
+        ("c_text", "text", "'plain text'"),
+        ("c_text_empty", "text", "''"),
+        ("c_varchar", "varchar(20)", "'varchar value'"),
+        ("c_bpchar", "char(8)", "'ab'"),
+        ("c_name", "name", "'a_name'"),
+        ("c_char", "\"char\"", "'x'"),
+        ("c_bytea", "bytea", "'\\x48656c6c6f'"),
+        ("c_uuid", "uuid", "'0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c'"),
+        ("c_date", "date", "'2024-01-15'"),
+        ("c_time", "time", "'10:30:00'"),
+        ("c_timetz", "timetz", "'10:30:00+02'"),
+        ("c_timestamp", "timestamp", "'2024-01-15 10:30:00'"),
+        ("c_timestamptz", "timestamptz", "'2024-01-15 10:30:00+00'"),
+        ("c_interval", "interval", "'3 days 4 hours'"),
+        ("c_json", "json", "'{\"a\": 1}'"),
+        ("c_jsonb", "jsonb", "'{\"b\": [1, 2]}'"),
+        ("c_xml", "xml", "'<r><a>1</a></r>'"),
+        ("c_inet", "inet", "'192.168.0.1'"),
+        ("c_cidr", "cidr", "'192.168.100.128/25'"),
+        ("c_macaddr", "macaddr", "'08:00:2b:01:02:03'"),
+        ("c_macaddr8", "macaddr8", "'08:00:2b:01:02:03:04:05'"),
+        ("c_bit", "bit(8)", "'10101010'"),
+        ("c_varbit", "varbit(16)", "'1010101010101010'"),
+        ("c_point", "point", "'(1,2)'"),
+        ("c_line", "line", "'{1,2,3}'"),
+        ("c_lseg", "lseg", "'((0,0),(1,1))'"),
+        ("c_box", "box", "'((1,2),(3,4))'"),
+        ("c_path", "path", "'((0,0),(1,1),(2,0))'"),
+        ("c_polygon", "polygon", "'((0,0),(1,1),(2,0))'"),
+        ("c_circle", "circle", "'<(0,0),5>'"),
+        ("c_int4range", "int4range", "'[1,10)'"),
+        ("c_numrange", "numrange", "'[1.5,2.5]'"),
+        ("c_daterange", "daterange", "'[2024-01-01,2024-02-01)'"),
+        (
+            "c_tstzrange",
+            "tstzrange",
+            "'[2024-01-01+00,2024-02-01+00)'",
+        ),
+        ("c_int4multirange", "int4multirange", "'{[1,5),[10,20)}'"),
+        ("c_tsvector", "tsvector", "'a fat cat'"),
+        ("c_tsquery", "tsquery", "'fat & rat'"),
+        ("c_oid", "oid", "'12345'"),
+        ("c_pg_lsn", "pg_lsn", "'16/B374D848'"),
+        // User-defined: enum, domain, composite. A domain reports its own OID as
+        // the column type, so it exercises the unknown-type path.
+        ("c_enum", "videre_types_test.mood", "'wrathful'"),
+        ("c_domain", "videre_types_test.short_text", "'ok'"),
+        ("c_composite", "videre_types_test.pair", "'(1,x)'"),
+        // Arrays, including of exotic element types and multi-dimensional.
+        ("c_int4_arr", "integer[]", "ARRAY[1,2,3]"),
+        ("c_text_arr", "text[]", "ARRAY['alpha','beta']"),
+        (
+            "c_uuid_arr",
+            "uuid[]",
+            "ARRAY['0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c'::uuid]",
+        ),
+        (
+            "c_tstz_arr",
+            "timestamptz[]",
+            "ARRAY['2024-01-15 10:30:00+00'::timestamptz]",
+        ),
+        (
+            "c_enum_arr",
+            "videre_types_test.mood[]",
+            "ARRAY['calm'::videre_types_test.mood]",
+        ),
+        ("c_int4_2d", "integer[][]", "ARRAY[[1,2],[3,4]]"),
+        ("c_jsonpath", "jsonpath", "'$.a[*] ? (@ > 2)'"),
+    ];
+
+    /// Builds a table with one column per entry in [`TYPE_MATRIX`]: one row of
+    /// values and one row that is NULL throughout.
+    async fn create_type_matrix(conn: &Connection) {
+        let columns_ddl = TYPE_MATRIX
+            .iter()
+            .map(|(name, sql_type, _)| format!("{name} {sql_type}"))
+            .collect::<Vec<_>>()
+            .join(",\n                     ");
+        let insert_names = TYPE_MATRIX
+            .iter()
+            .map(|(name, _, _)| *name)
+            .collect::<Vec<_>>()
+            .join(", ");
+        let insert_values = TYPE_MATRIX
+            .iter()
+            .map(|(_, _, literal)| *literal)
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        conn.client
+            .batch_execute(&format!(
+                "DROP SCHEMA IF EXISTS videre_types_test CASCADE;
+                 CREATE SCHEMA videre_types_test;
+                 CREATE TYPE videre_types_test.mood AS ENUM ('calm', 'wrathful');
+                 CREATE TYPE videre_types_test.pair AS (n integer, s text);
+                 CREATE DOMAIN videre_types_test.short_text AS text
+                     CHECK (length(VALUE) <= 10);
+                 CREATE TABLE videre_types_test.every_type (
+                     ord integer NOT NULL,
+                     {columns_ddl}
+                 );
+                 INSERT INTO videre_types_test.every_type (ord, {insert_names})
+                     VALUES (1, {insert_values});
+                 -- Second row leaves every column NULL.
+                 INSERT INTO videre_types_test.every_type (ord) VALUES (2);"
+            ))
+            .await
+            .expect("type matrix DDL should apply");
+    }
+
+    async fn drop_type_matrix(conn: &Connection) {
+        conn.client
+            .batch_execute("DROP SCHEMA videre_types_test CASCADE;")
+            .await
+            .unwrap();
+    }
+
+    /// The guarantee: for every type above, what we hand the UI is exactly what
+    /// Postgres itself renders, and a cell is blank only when the value really is
+    /// an empty string.
+    ///
+    /// The reference rendering is generated by re-reading each column as `::text`
+    /// — the same thing `psql` shows — so a new type added to `TYPE_MATRIX` is
+    /// checked with no further work.
+    #[tokio::test]
+    #[ignore]
+    async fn every_type_renders_exactly_as_postgres_does() {
+        let conn = connect().await;
+        create_type_matrix(&conn).await;
+
+        let relation = qualified_name("videre_types_test", "every_type").unwrap();
+        let data = conn
+            .table_data("videre_types_test", "every_type", 100, 0)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            data.columns.len(),
+            TYPE_MATRIX.len() + 1,
+            "every declared column should come back"
+        );
+        assert_eq!(data.total_rows, 2);
+
+        // Reference rendering, generated from the same column list.
+        let reference_query = format!(
+            "SELECT {} FROM {relation} ORDER BY ord",
+            data.columns
+                .iter()
+                .map(|c| Ok(format!("{}::text", quote_ident(c)?)))
+                .collect::<Result<Vec<_>, String>>()
+                .unwrap()
+                .join(", ")
+        );
+        let reference = conn.client.query(&reference_query, &[]).await.unwrap();
+
+        let ord = data.columns.iter().position(|c| c == "ord").unwrap();
+        let populated = data.rows.iter().find(|r| r[ord] == 1).unwrap();
+        let all_null = data.rows.iter().find(|r| r[ord] == 2).unwrap();
+
+        let mut checked = 0;
+        for (idx, name) in data.columns.iter().enumerate() {
+            let ours = &populated[idx];
+            let theirs: Option<String> = reference[0].get(idx);
+            let theirs = theirs.expect("populated row has no NULLs except by design");
+
+            // A value must never vanish into null, and must never be the
+            // decoder's own error marker.
+            assert_ne!(*ours, Value::Null, "{name} rendered as null");
+            if let Value::String(s) = ours {
+                assert!(!s.starts_with("<unreadable"), "{name}: {s}");
+            }
+
+            let shown = rendered(ours);
+            let matches = if *name == "c_bpchar" {
+                // `character(n)` keeps its padding on the wire, but the cast to
+                // text strips trailing blanks. The padded form is the truer one
+                // — the blanks are stored data — so compare against it directly.
+                assert_eq!(shown, "ab      ", "char(8) should keep its padding");
+                true
+            } else {
+                shown == theirs || numerically_equal(&shown, &theirs)
+            };
+            assert!(
+                matches,
+                "{name}: we render {shown:?} but Postgres renders {theirs:?}"
+            );
+            checked += 1;
+
+            // A genuine NULL must stay NULL, so the UI can show its NULL marker
+            // rather than an ambiguous blank.
+            if name != "ord" {
+                assert_eq!(all_null[idx], Value::Null, "{name} should be NULL");
+            }
+        }
+        assert_eq!(checked, TYPE_MATRIX.len() + 1);
+
+        // The one legitimately blank cell: an actual empty string, which must be
+        // an empty string and not a NULL.
+        let empty = data
+            .columns
+            .iter()
+            .position(|c| c == "c_text_empty")
+            .unwrap();
+        assert_eq!(populated[empty], Value::String(String::new()));
+        assert_eq!(all_null[empty], Value::Null);
+
+        drop_type_matrix(&conn).await;
+    }
+
+    /// Integers and floats can format differently on each side (`1e+30` vs a run
+    /// of zeroes) while being the same number.
+    fn numerically_equal(ours: &str, theirs: &str) -> bool {
+        match (ours.parse::<f64>(), theirs.parse::<f64>()) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => false,
+        }
+    }
+
+    /// The exact text a user will see in the cell, pinned by hand.
+    ///
+    /// `every_type_renders_exactly_as_postgres_does` compares us against the
+    /// server, which for server-rendered types is close to tautological — it
+    /// proves the value arrives intact but not what it looks like. These are the
+    /// literal expected strings, so a change in how anything renders shows up as
+    /// a failing assertion rather than passing silently on both sides.
+    ///
+    /// Several are Postgres *normalizing* the input, which is the behaviour we
+    /// want to inherit rather than reimplement.
+    const EXPECTED_RENDERING: &[(&str, &str)] = &[
+        // Natively decoded — JSON types, not strings.
+        ("c_bool", "true"),
+        ("c_int2", "32767"),
+        ("c_int8", "9223372036854775807"),
+        ("c_float4", "0.1"),
+        ("c_float8", "2.5"),
+        ("c_text", "plain text"),
+        ("c_name", "a_name"),
+        // `character(n)` keeps the blanks it pads with; they are stored data.
+        ("c_bpchar", "ab      "),
+        // The one legitimately blank cell.
+        ("c_text_empty", ""),
+        // Server-rendered, verbatim.
+        ("c_numeric", "12345678901234567890.1234567890"),
+        ("c_numeric_plain", "0.30000000000000004"),
+        ("c_uuid", "0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c"),
+        ("c_date", "2024-01-15"),
+        ("c_timestamptz", "2024-01-15 10:30:00+00"),
+        ("c_timetz", "10:30:00+02"),
+        ("c_bytea", "\\x48656c6c6f"),
+        ("c_jsonb", "{\"b\": [1, 2]}"),
+        ("c_xml", "<r><a>1</a></r>"),
+        ("c_bit", "10101010"),
+        ("c_macaddr8", "08:00:2b:01:02:03:04:05"),
+        ("c_cidr", "192.168.100.128/25"),
+        ("c_pg_lsn", "16/B374D848"),
+        ("c_point", "(1,2)"),
+        ("c_int4range", "[1,10)"),
+        ("c_int4multirange", "{[1,5),[10,20)}"),
+        ("c_text_arr", "{alpha,beta}"),
+        ("c_int4_2d", "{{1,2},{3,4}}"),
+        ("c_enum", "wrathful"),
+        ("c_domain", "ok"),
+        ("c_composite", "(1,x)"),
+        ("c_char", "x"),
+        // Server-rendered *and normalized* — the input literal differs.
+        ("c_money", "$1,234.56"),
+        ("c_interval", "3 days 04:00:00"),
+        ("c_tsvector", "'a' 'cat' 'fat'"),
+        ("c_tsquery", "'fat' & 'rat'"),
+        ("c_jsonpath", "$.\"a\"[*]?(@ > 2)"),
+        ("c_inet", "192.168.0.1/32"),
+        ("c_box", "(3,4),(1,2)"),
+        ("c_lseg", "[(0,0),(1,1)]"),
+        (
+            "c_tstzrange",
+            "[\"2024-01-01 00:00:00+00\",\"2024-02-01 00:00:00+00\")",
+        ),
+    ];
+
+    #[tokio::test]
+    #[ignore]
+    async fn cells_show_the_exact_expected_text() {
+        let conn = connect().await;
+        create_type_matrix(&conn).await;
+
+        let data = conn
+            .table_data("videre_types_test", "every_type", 100, 0)
+            .await
+            .unwrap();
+        let ord = data.columns.iter().position(|c| c == "ord").unwrap();
+        let row = data.rows.iter().find(|r| r[ord] == 1).unwrap();
+
+        for (name, expected) in EXPECTED_RENDERING {
+            let idx = data
+                .columns
+                .iter()
+                .position(|c| c == name)
+                .unwrap_or_else(|| panic!("{name} is not in the type matrix"));
+            assert_eq!(
+                rendered(&row[idx]),
+                *expected,
+                "{name} renders differently than expected"
+            );
+        }
+
+        // Natively decoded columns must arrive as JSON numbers and booleans, not
+        // strings — the UI right-aligns on that distinction.
+        let of = |name: &str| row[data.columns.iter().position(|c| c == name).unwrap()].clone();
+        assert!(of("c_int8").is_number(), "int8 should stay a JSON number");
+        assert!(
+            of("c_float8").is_number(),
+            "float8 should stay a JSON number"
+        );
+        assert!(of("c_bool").is_boolean(), "bool should stay a JSON bool");
+        // `numeric` is deliberately a string: f64 would lose its precision.
+        assert!(of("c_numeric").is_string(), "numeric should stay text");
+
+        drop_type_matrix(&conn).await;
+    }
+
     /// The reported bug: `created_at` is `timestamptz` in every seeded table, and
     /// the old try_get chain had no arm for it, so it rendered as `null`.
     #[tokio::test]
