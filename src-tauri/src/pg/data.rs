@@ -1,9 +1,6 @@
 //! Reading row data out of a table.
 
-use tokio_postgres::Row;
-use uuid::Uuid;
-
-use super::convert::{qualified_name, quote_ident, ColumnPlan};
+use super::convert::{bind_key, qualified_name, quote_ident, ColumnPlan};
 use super::Connection;
 use crate::types::{RowData, TableData};
 
@@ -80,57 +77,31 @@ impl Connection {
             return Err(format!("{relation} has no columns"));
         }
 
+        // Both the comparison and the parameter come from the column's own type,
+        // so Postgres gets what it inferred for `$1`. Guessing from the JSON
+        // value's shape is what broke every non-`int4` key.
+        let predicate = plan
+            .key_predicate(pk_column)
+            .ok_or_else(|| format!("{relation} has no column named {pk_column:?}"))?;
+        let param = bind_key(pk_value, &predicate)?;
+
         let data_query = format!(
             "SELECT {} FROM {relation} WHERE {} = $1 LIMIT 1",
             plan.select_list()?,
-            quote_ident(pk_column)?
+            predicate.lhs(&quote_ident(pk_column)?)
         );
 
-        let row = self.query_by_pk(&data_query, pk_value).await?;
+        let row = self
+            .client
+            .query_opt(&data_query, &[&*param])
+            .await
+            .map_err(|e| format!("Failed to fetch row: {e}"))?
+            .ok_or_else(|| "Row not found".to_string())?;
 
         Ok(RowData {
             columns: plan.names(),
             values: plan.decode_row(&row),
         })
-    }
-
-    /// Bind `pk_value` and fetch the single matching row.
-    ///
-    /// The parameter type is inferred from the JSON shape rather than read from
-    /// the column, which is why a `bigint` key above 2^31 truncates and a `text`
-    /// key holding a UUID-shaped string fails. Both want the type from
-    /// `column_plan` instead.
-    async fn query_by_pk(
-        &self,
-        data_query: &str,
-        pk_value: &serde_json::Value,
-    ) -> Result<Row, String> {
-        let row_result = match pk_value {
-            serde_json::Value::Number(n) => {
-                if let Some(i) = n.as_i64() {
-                    self.client.query_opt(data_query, &[&(i as i32)]).await
-                } else if let Some(f) = n.as_f64() {
-                    self.client.query_opt(data_query, &[&f]).await
-                } else {
-                    return Err("Invalid number type".to_string());
-                }
-            }
-            serde_json::Value::String(s) => {
-                // Try parsing as UUID first
-                if let Ok(uuid) = s.parse::<Uuid>() {
-                    self.client.query_opt(data_query, &[&uuid]).await
-                } else {
-                    self.client.query_opt(data_query, &[&s]).await
-                }
-            }
-            _ => return Err("Unsupported primary key type".to_string()),
-        };
-
-        match row_result {
-            Ok(Some(row)) => Ok(row),
-            Ok(None) => Err("Row not found".to_string()),
-            Err(e) => Err(format!("Failed to fetch row: {e}")),
-        }
     }
 }
 
@@ -282,6 +253,98 @@ mod live {
 
         conn.client
             .batch_execute("DROP SCHEMA videre_convert_test CASCADE;")
+            .await
+            .unwrap();
+    }
+
+    /// Every one of these key types used to fail with `error serializing
+    /// parameter 0`, because the parameter was bound from the JSON value's shape
+    /// instead of the column's type. Only `int4` worked.
+    #[tokio::test]
+    #[ignore]
+    async fn keys_of_every_type_resolve() {
+        let conn = connect().await;
+        conn.client
+            .batch_execute(
+                "DROP SCHEMA IF EXISTS videre_key_test CASCADE;
+                 CREATE SCHEMA videre_key_test;
+                 CREATE TABLE videre_key_test.k_int8 (id bigint PRIMARY KEY, label text);
+                 INSERT INTO videre_key_test.k_int8 VALUES (42, 'small'), (9007199254740993, 'big');
+                 CREATE TABLE videre_key_test.k_int2 (id smallint PRIMARY KEY, label text);
+                 INSERT INTO videre_key_test.k_int2 VALUES (7, 'seven');
+                 CREATE TABLE videre_key_test.k_int4 (id integer PRIMARY KEY, label text);
+                 INSERT INTO videre_key_test.k_int4 VALUES (3, 'three');
+                 CREATE TABLE videre_key_test.k_uuid (id uuid PRIMARY KEY, label text);
+                 INSERT INTO videre_key_test.k_uuid
+                     VALUES ('0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c', 'by-uuid');
+                 CREATE TABLE videre_key_test.k_text (id text PRIMARY KEY, label text);
+                 INSERT INTO videre_key_test.k_text
+                     VALUES ('0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c', 'uuid-shaped-text');
+                 CREATE TABLE videre_key_test.k_numeric (id numeric(20,4) PRIMARY KEY, label text);
+                 INSERT INTO videre_key_test.k_numeric VALUES (12345.6700, 'by-numeric');
+                 CREATE TABLE videre_key_test.k_date (id date PRIMARY KEY, label text);
+                 INSERT INTO videre_key_test.k_date VALUES ('2024-01-15', 'by-date');",
+            )
+            .await
+            .unwrap();
+
+        let cases = [
+            ("k_int8", serde_json::json!(42), "small"),
+            // Sent as a string: past 2^53 that is the only lossless JSON form.
+            ("k_int8", serde_json::json!("9007199254740993"), "big"),
+            ("k_int2", serde_json::json!(7), "seven"),
+            ("k_int4", serde_json::json!(3), "three"),
+            (
+                "k_uuid",
+                serde_json::json!("0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c"),
+                "by-uuid",
+            ),
+            (
+                "k_text",
+                serde_json::json!("0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c"),
+                "uuid-shaped-text",
+            ),
+            // Exotic key types go through the server's text form in both
+            // directions, so the value read out of a cell is what matches.
+            ("k_numeric", serde_json::json!("12345.6700"), "by-numeric"),
+            ("k_date", serde_json::json!("2024-01-15"), "by-date"),
+        ];
+
+        for (table, key, expected_label) in cases {
+            let row = conn
+                .row_by_pk("videre_key_test", table, "id", &key)
+                .await
+                .unwrap_or_else(|e| panic!("{table} with key {key}: {e}"));
+            let label = row.columns.iter().position(|c| c == "label").unwrap();
+            assert_eq!(
+                row.values[label],
+                Value::String(expected_label.into()),
+                "{table} with key {key}"
+            );
+        }
+
+        // A key too large for its column is reported, not wrapped into a
+        // different row.
+        let err = conn
+            .row_by_pk(
+                "videre_key_test",
+                "k_int4",
+                "id",
+                &serde_json::json!(2147483648i64),
+            )
+            .await
+            .unwrap_err();
+        assert!(err.contains("out of range"), "{err}");
+
+        // An unknown column is caught before it becomes SQL.
+        let err = conn
+            .row_by_pk("videre_key_test", "k_int4", "nope", &serde_json::json!(3))
+            .await
+            .unwrap_err();
+        assert!(err.contains("no column named"), "{err}");
+
+        conn.client
+            .batch_execute("DROP SCHEMA videre_key_test CASCADE;")
             .await
             .unwrap();
     }

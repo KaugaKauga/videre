@@ -1,6 +1,7 @@
 use serde_json::Value;
-use tokio_postgres::types::{FromSql, Type};
+use tokio_postgres::types::{FromSql, ToSql, Type};
 use tokio_postgres::{Column, Row};
+use uuid::Uuid;
 
 pub fn quote_ident(ident: &str) -> Result<String, String> {
     if ident.contains('\0') {
@@ -59,8 +60,14 @@ impl Decoder {
     }
 }
 
+struct PlannedColumn {
+    name: String,
+    ty: Type,
+    decoder: Decoder,
+}
+
 pub struct ColumnPlan {
-    columns: Vec<(String, Decoder)>,
+    columns: Vec<PlannedColumn>,
 }
 
 impl ColumnPlan {
@@ -68,7 +75,11 @@ impl ColumnPlan {
         Self {
             columns: columns
                 .iter()
-                .map(|c| (c.name().to_string(), Decoder::for_type(c.type_())))
+                .map(|c| PlannedColumn {
+                    name: c.name().to_string(),
+                    ty: c.type_().clone(),
+                    decoder: Decoder::for_type(c.type_()),
+                })
                 .collect(),
         }
     }
@@ -81,16 +92,25 @@ impl ColumnPlan {
 
     /// Column names in table order.
     pub fn names(&self) -> Vec<String> {
-        self.columns.iter().map(|(name, _)| name.clone()).collect()
+        self.columns.iter().map(|c| c.name.clone()).collect()
+    }
+
+    /// How to compare `column` against a bound key value, or `None` if the
+    /// relation has no column by that name.
+    pub fn key_predicate(&self, column: &str) -> Option<KeyPredicate> {
+        self.columns
+            .iter()
+            .find(|c| c.name == column)
+            .map(|c| KeyPredicate::for_type(&c.ty))
     }
 
     /// The SELECT list for the real query: a bare identifier where we decode
     /// natively, `"col"::text` where Postgres should do the formatting.
     pub fn select_list(&self) -> Result<String, String> {
         let mut parts = Vec::with_capacity(self.columns.len());
-        for (name, decoder) in &self.columns {
-            let ident = quote_ident(name)?;
-            parts.push(if decoder.needs_cast() {
+        for column in &self.columns {
+            let ident = quote_ident(&column.name)?;
+            parts.push(if column.decoder.needs_cast() {
                 format!("{ident}::text")
             } else {
                 ident
@@ -106,8 +126,172 @@ impl ColumnPlan {
         self.columns
             .iter()
             .enumerate()
-            .map(|(idx, (_, decoder))| decode_cell(row, idx, *decoder))
+            .map(|(idx, column)| decode_cell(row, idx, column.decoder))
             .collect()
+    }
+}
+
+/// How a key column is compared against a bound parameter.
+///
+/// Postgres infers `$1`'s type from the comparison, so `"id" = $1` on a `bigint`
+/// column means the driver must send an `int8` — sending anything else is a
+/// serialization error, not a coercion. The parameter type therefore has to come
+/// from the column, never from the shape of the incoming JSON.
+pub enum KeyPredicate {
+    /// Bind a parameter of the column's own type. Uses the index.
+    Typed(Type),
+    /// Compare the column's text form. Correct for any type at all, but it
+    /// cannot use the index, so it is reserved for types we can't bind natively
+    /// (`numeric`, dates, enums, domains). Both directions go through the
+    /// server's text form, so values round-trip exactly.
+    AsText,
+}
+
+impl KeyPredicate {
+    fn for_type(ty: &Type) -> Self {
+        if [
+            Type::BOOL,
+            Type::INT2,
+            Type::INT4,
+            Type::INT8,
+            Type::FLOAT4,
+            Type::FLOAT8,
+            Type::TEXT,
+            Type::VARCHAR,
+            Type::BPCHAR,
+            Type::NAME,
+            Type::UUID,
+        ]
+        .contains(ty)
+        {
+            Self::Typed(ty.clone())
+        } else {
+            Self::AsText
+        }
+    }
+
+    /// The left-hand side of the `= $1` comparison.
+    pub fn lhs(&self, quoted_ident: &str) -> String {
+        match self {
+            Self::Typed(_) => quoted_ident.to_string(),
+            Self::AsText => format!("{quoted_ident}::text"),
+        }
+    }
+}
+
+/// Turn a JSON key value from the frontend into a parameter the column accepts.
+///
+/// `Send` as well as `Sync` because the boxed parameter is held across the query
+/// `await`, inside a future Tauri requires to be `Send`.
+pub fn bind_key(
+    value: &Value,
+    predicate: &KeyPredicate,
+) -> Result<Box<dyn ToSql + Sync + Send>, String> {
+    if value.is_null() {
+        return Err("Key value cannot be null".to_string());
+    }
+
+    let ty = match predicate {
+        KeyPredicate::AsText => return Ok(Box::new(as_text(value))),
+        KeyPredicate::Typed(ty) => ty,
+    };
+
+    if ty == &Type::BOOL {
+        Ok(Box::new(as_bool(value)?))
+    } else if ty == &Type::INT2 {
+        Ok(Box::new(
+            as_int(value, i16::MIN.into(), i16::MAX.into())? as i16
+        ))
+    } else if ty == &Type::INT4 {
+        Ok(Box::new(
+            as_int(value, i32::MIN.into(), i32::MAX.into())? as i32
+        ))
+    } else if ty == &Type::INT8 {
+        Ok(Box::new(as_int(value, i64::MIN, i64::MAX)?))
+    } else if ty == &Type::FLOAT4 {
+        Ok(Box::new(as_float(value)? as f32))
+    } else if ty == &Type::FLOAT8 {
+        Ok(Box::new(as_float(value)?))
+    } else if ty == &Type::UUID {
+        Ok(Box::new(as_uuid(value)?))
+    } else if [Type::TEXT, Type::VARCHAR, Type::BPCHAR, Type::NAME].contains(ty) {
+        Ok(Box::new(as_string(value)?))
+    } else {
+        // Unreachable: `for_type` only returns Typed for the types above.
+        Err(format!("Cannot bind a {ty} key value"))
+    }
+}
+
+/// Accepts a JSON number or a numeric string. The string form matters because
+/// JSON numbers are `f64` in the webview, so a `bigint` beyond 2^53 can only
+/// reach us losslessly as text.
+fn as_int(value: &Value, min: i64, max: i64) -> Result<i64, String> {
+    let n = match value {
+        Value::Number(n) => n
+            .as_i64()
+            .ok_or_else(|| format!("Key value {n} is not a whole number"))?,
+        Value::String(s) => s
+            .trim()
+            .parse::<i64>()
+            .map_err(|_| format!("Key value {s:?} is not a whole number"))?,
+        other => return Err(format!("Expected an integer key value, got {other}")),
+    };
+    // Reported rather than truncated with `as` — a silently wrapped key would
+    // fetch the wrong row.
+    if n < min || n > max {
+        return Err(format!("Key value {n} is out of range for this column"));
+    }
+    Ok(n)
+}
+
+fn as_float(value: &Value) -> Result<f64, String> {
+    match value {
+        Value::Number(n) => n
+            .as_f64()
+            .ok_or_else(|| format!("Key value {n} is not a number")),
+        Value::String(s) => s
+            .trim()
+            .parse()
+            .map_err(|_| format!("Key value {s:?} is not a number")),
+        other => Err(format!("Expected a numeric key value, got {other}")),
+    }
+}
+
+fn as_bool(value: &Value) -> Result<bool, String> {
+    match value {
+        Value::Bool(b) => Ok(*b),
+        // `t`/`f` is what the server's text form produces.
+        Value::String(s) => match s.trim() {
+            "true" | "t" => Ok(true),
+            "false" | "f" => Ok(false),
+            _ => Err(format!("Key value {s:?} is not a boolean")),
+        },
+        other => Err(format!("Expected a boolean key value, got {other}")),
+    }
+}
+
+fn as_uuid(value: &Value) -> Result<Uuid, String> {
+    match value {
+        Value::String(s) => s
+            .trim()
+            .parse()
+            .map_err(|_| format!("Key value {s:?} is not a UUID")),
+        other => Err(format!("Expected a UUID key value, got {other}")),
+    }
+}
+
+fn as_string(value: &Value) -> Result<String, String> {
+    match value {
+        Value::String(s) => Ok(s.clone()),
+        other => Err(format!("Expected a text key value, got {other}")),
+    }
+}
+
+/// The `::text` comparison path: whatever the read side rendered, verbatim.
+fn as_text(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
     }
 }
 
@@ -159,14 +343,22 @@ mod tests {
     use super::*;
 
     impl ColumnPlan {
-        fn from_parts(parts: &[(&str, Decoder)]) -> Self {
+        fn from_parts(parts: &[(&str, Type)]) -> Self {
             Self {
                 columns: parts
                     .iter()
-                    .map(|(name, decoder)| (name.to_string(), *decoder))
+                    .map(|(name, ty)| PlannedColumn {
+                        name: name.to_string(),
+                        ty: ty.clone(),
+                        decoder: Decoder::for_type(ty),
+                    })
                     .collect(),
             }
         }
+    }
+
+    fn typed(ty: Type) -> KeyPredicate {
+        KeyPredicate::for_type(&ty)
     }
 
     #[test]
@@ -259,9 +451,9 @@ mod tests {
     #[test]
     fn select_list_casts_only_what_needs_it() {
         let plan = ColumnPlan::from_parts(&[
-            ("id", Decoder::Int4),
-            ("name", Decoder::Text),
-            ("created_at", Decoder::AsText),
+            ("id", Type::INT4),
+            ("name", Type::TEXT),
+            ("created_at", Type::TIMESTAMPTZ),
         ]);
         assert_eq!(
             plan.select_list().unwrap(),
@@ -272,14 +464,104 @@ mod tests {
 
     #[test]
     fn select_list_escapes_column_names() {
-        let plan = ColumnPlan::from_parts(&[("we\"ird", Decoder::AsText)]);
+        let plan = ColumnPlan::from_parts(&[("we\"ird", Type::TIMESTAMPTZ)]);
         assert_eq!(plan.select_list().unwrap(), "\"we\"\"ird\"::text");
     }
 
     #[test]
     fn empty_relation_is_detectable() {
         assert!(ColumnPlan::from_parts(&[]).is_empty());
-        assert!(!ColumnPlan::from_parts(&[("id", Decoder::Int4)]).is_empty());
+        assert!(!ColumnPlan::from_parts(&[("id", Type::INT4)]).is_empty());
+    }
+
+    #[test]
+    fn key_predicate_comes_from_the_column_not_the_value() {
+        let plan = ColumnPlan::from_parts(&[("id", Type::INT8), ("code", Type::NUMERIC)]);
+
+        // Indexable types compare directly...
+        assert!(matches!(
+            plan.key_predicate("id"),
+            Some(KeyPredicate::Typed(_))
+        ));
+        // ...anything else falls back to the text form.
+        assert!(matches!(
+            plan.key_predicate("code"),
+            Some(KeyPredicate::AsText)
+        ));
+        // An unknown column is caught before it reaches SQL.
+        assert!(plan.key_predicate("nope").is_none());
+    }
+
+    #[test]
+    fn predicate_lhs_only_casts_when_it_must() {
+        assert_eq!(typed(Type::INT8).lhs("\"id\""), "\"id\"");
+        assert_eq!(typed(Type::UUID).lhs("\"id\""), "\"id\"");
+        assert_eq!(typed(Type::NUMERIC).lhs("\"id\""), "\"id\"::text");
+        assert_eq!(typed(Type::DATE).lhs("\"d\""), "\"d\"::text");
+    }
+
+    #[test]
+    fn every_integer_width_binds() {
+        // The regression: a bigint key used to be cast to i32 and rejected by the
+        // driver as `error serializing parameter 0`, whatever its value.
+        for ty in [Type::INT2, Type::INT4, Type::INT8] {
+            assert!(
+                bind_key(&Value::from(42), &typed(ty.clone())).is_ok(),
+                "{ty} should bind"
+            );
+        }
+        assert!(bind_key(
+            &Value::from(9_223_372_036_854_775_807i64),
+            &typed(Type::INT8)
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn out_of_range_keys_are_reported_not_truncated() {
+        // 2^31 would wrap to a negative i32 under `as i32` and fetch a wrong row.
+        let err = bind_key(&Value::from(2_147_483_648i64), &typed(Type::INT4)).unwrap_err();
+        assert!(err.contains("out of range"), "{err}");
+
+        let err = bind_key(&Value::from(40_000), &typed(Type::INT2)).unwrap_err();
+        assert!(err.contains("out of range"), "{err}");
+    }
+
+    #[test]
+    fn integers_also_accept_their_string_form() {
+        // JSON numbers are f64 in the webview, so a bigint past 2^53 can only
+        // arrive losslessly as text.
+        assert!(bind_key(&Value::from("9007199254740993"), &typed(Type::INT8)).is_ok());
+        assert!(bind_key(&Value::from("not a number"), &typed(Type::INT8)).is_err());
+    }
+
+    #[test]
+    fn uuid_shaped_text_binds_as_text_when_the_column_is_text() {
+        let uuid = Value::from("0b7f2c1e-4a5d-4f8e-9c3a-1d2e3f4a5b6c");
+        // A `text` column holding UUID-shaped strings used to be bound as a
+        // `uuid` parameter and rejected.
+        assert!(bind_key(&uuid, &typed(Type::TEXT)).is_ok());
+        // A real uuid column still binds as a uuid.
+        assert!(bind_key(&uuid, &typed(Type::UUID)).is_ok());
+        assert!(bind_key(&Value::from("nope"), &typed(Type::UUID)).is_err());
+    }
+
+    #[test]
+    fn mismatched_and_null_keys_are_rejected_clearly() {
+        assert!(bind_key(&Value::Null, &typed(Type::INT4))
+            .unwrap_err()
+            .contains("cannot be null"));
+        assert!(bind_key(&Value::from(true), &typed(Type::INT4)).is_err());
+        assert!(bind_key(&Value::from(1.5), &typed(Type::INT8)).is_err());
+        assert!(bind_key(&Value::from(7), &typed(Type::TEXT)).is_err());
+    }
+
+    #[test]
+    fn text_fallback_carries_the_servers_own_rendering() {
+        // Reads go through `::text`, so the value coming back is already the
+        // server's form and must be compared verbatim.
+        assert!(bind_key(&Value::from("12345.6700"), &KeyPredicate::AsText).is_ok());
+        assert!(bind_key(&Value::from("2024-01-15"), &KeyPredicate::AsText).is_ok());
     }
 
     #[test]
