@@ -1,7 +1,7 @@
 <h1 align="center">Videre</h1>
 
 <p align="center">
-  A simplicty and privacy focused PostgreSQL inspector.
+  A beautiful, simple, and security-focused PostgreSQL reader.
 </p>
 
 <p align="center">
@@ -11,7 +11,23 @@
 
 ## Why Videre?
 
-Sometimes you just need to quickly connect to a database and browse your data. Videre is designed for exactly that — a lightweight tool for when you want to inspect tables without any setup overhead.
+Sometimes you just need to quickly connect to a database and understand its data. Videre is designed for exactly that — a lightweight tool for inspecting PostgreSQL without the clutter and complexity of a traditional database client.
+
+The initial and primary goal is to make the best possible read-only experience. Editing will come later as an explicit, opt-in capability without replacing the simplicity of the reader.
+
+### Product Direction
+
+#### Phase 1 — Reader Mode
+
+Reader Mode is the current and primary focus. It provides a beautiful, simple, and secure environment for browsing data, understanding database structure, and following relationships without exposing mutation controls.
+
+Read-only is a first-class product mode, not a temporary limitation. It will remain the default even after editing is introduced.
+
+#### Phase 2 — Edit Mode
+
+Once Reader Mode is "finished", Videre will add an explicit Edit Mode for inserting, updating, and deleting data. Editing will be clearly indicated and deliberately enabled, while Reader Mode remains available for users who only want to inspect a database.
+
+Videre remains a database inspector in both modes: Reader Mode is for understanding, and Edit Mode adds controlled mutation capabilities.
 
 ### Simple
 
@@ -33,7 +49,7 @@ Your data is yours. Videre runs entirely on your machine.
 
 ## What You Can Inspect
 
-Videre is currently **read-only** — perfect for browsing and understanding your data without risk of accidental changes.
+Videre currently operates in **Reader Mode** — a read-only experience for browsing and understanding your data without exposing accidental mutation controls.
 
 - **Tables** — Browse data with pagination
 - **Indexes** — View index configurations
@@ -99,26 +115,23 @@ cargo tauri dev         # Run the app
 
 ## Roadmap
 
-**More to inspect**
-- [ ] Sequences
-- [ ] Constraints
-- [ ] Stored procedures / Functions
+**Phase 1 — Reader Mode**
+- [ ] Trustworthy server-side sorting, filtering, and pagination
+- [ ] Copy cells and rows, inspect full values, and export CSV/JSON
+- [ ] Inspect columns, types, constraints, indexes, and relationships
+- [ ] Improve schema navigation, object search, and connection context
+- [ ] Add focused read-only diagnostics for activity, locks, and database health
 
-**Usability**
-- [ ] Table filtering and search
-- [x] Column sorting
-- [ ] Export to CSV/JSON
-- [ ] Connection profiles (save multiple databases)
-
-**Edit capabilities**
+**Phase 2 — Edit Mode**
+- [ ] Explicit Reader/Edit mode selection
 - [ ] Insert rows
 - [ ] Update rows
 - [ ] Delete rows
-- [ ] Query editor
+- [ ] Clear previews and confirmations for mutations
+- [ ] Focused query workspace
 
-**More databases**
-- [ ] MySQL support
-- [ ] SQLite support
+**Future database support**
+- [ ] Evaluate MySQL and SQLite after the PostgreSQL experience is excellent
 
 ## License
 
