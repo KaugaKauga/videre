@@ -85,13 +85,21 @@ pub fn IndexesPage() -> impl IntoView {
             let cols_display = idx.columns.join(", ");
             let size = format_bytes(idx.size_bytes);
             let unique_class = if idx.is_unique { "bool-yes" } else { "bool-no" };
-            let unique_text = if idx.is_unique { "\u{2713}" } else { "\u{2014}" };
+            let unique_text = if idx.is_unique {
+                "\u{2713}"
+            } else {
+                "\u{2014}"
+            };
             let primary_class = if idx.is_primary {
                 "bool-yes bool-primary"
             } else {
                 "bool-no"
             };
-            let primary_text = if idx.is_primary { "\u{2713}" } else { "\u{2014}" };
+            let primary_text = if idx.is_primary {
+                "\u{2713}"
+            } else {
+                "\u{2014}"
+            };
 
             view! {
                 <tr class="data-table-row">

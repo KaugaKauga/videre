@@ -2,15 +2,15 @@ use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-use crate::pages::connection::ConnectionPage;
 use crate::components::empty::{EmptyState, EmptyTab};
+use crate::components::sidebar::Sidebar;
+use crate::components::tab_bar::TabBar;
+use crate::pages::connection::ConnectionPage;
 use crate::pages::indexes::IndexesPage;
 use crate::pages::roles::RolesPage;
 use crate::pages::settings::SettingsPage;
-use crate::components::sidebar::Sidebar;
-use crate::components::tab_bar::TabBar;
-use crate::stores::tab_store::{TabStore, TabType};
 use crate::pages::table::TablePage;
+use crate::stores::tab_store::{TabStore, TabType};
 
 /// Main application shell shown after a successful DB connection.
 ///

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use leptos::prelude::*;
 
-use crate::stores::db_store::DbStore;
 use crate::components::drawer::Drawer;
+use crate::stores::db_store::DbStore;
 use crate::types::{RoleInfo, TablePrivilege};
 
 // ---------------------------------------------------------------------------
@@ -107,10 +107,7 @@ fn priv_badge_class(priv_name: &str) -> &'static str {
 // ---------------------------------------------------------------------------
 
 #[component]
-fn RoleDetailPanel(
-    role: RoleInfo,
-    privileges: Vec<TablePrivilege>,
-) -> impl IntoView {
+fn RoleDetailPanel(role: RoleInfo, privileges: Vec<TablePrivilege>) -> impl IntoView {
     // Group privileges by schema.table
     let grouped: HashMap<String, Vec<String>> = {
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
@@ -305,10 +302,13 @@ pub fn RolesPage() -> impl IntoView {
     let user_rows: Vec<_> = users
         .iter()
         .map(|role| {
-            let summary = summaries.get(&role.role_name).cloned().unwrap_or(PermSummary {
-                label: "unknown".into(),
-                kind: "none",
-            });
+            let summary = summaries
+                .get(&role.role_name)
+                .cloned()
+                .unwrap_or(PermSummary {
+                    label: "unknown".into(),
+                    kind: "none",
+                });
             let rn = role.role_name.clone();
             render_role_row(role, &summary, true, move || {
                 panel_title.set(rn.clone());
@@ -322,10 +322,13 @@ pub fn RolesPage() -> impl IntoView {
     let group_rows: Vec<_> = groups
         .iter()
         .map(|role| {
-            let summary = summaries.get(&role.role_name).cloned().unwrap_or(PermSummary {
-                label: "unknown".into(),
-                kind: "none",
-            });
+            let summary = summaries
+                .get(&role.role_name)
+                .cloned()
+                .unwrap_or(PermSummary {
+                    label: "unknown".into(),
+                    kind: "none",
+                });
             let rn = role.role_name.clone();
             render_role_row(role, &summary, false, move || {
                 panel_title.set(rn.clone());
