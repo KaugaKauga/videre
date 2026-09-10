@@ -12,6 +12,7 @@
 pub mod catalog;
 pub mod convert;
 pub mod data;
+pub mod relation_structure;
 
 use tokio_postgres::{Client, NoTls};
 
@@ -20,7 +21,7 @@ use crate::types::ConnectionConfig;
 /// A live Postgres connection.
 pub struct Connection {
     // Private, so only this module and its children touch the driver. Sibling
-    // modules (`catalog`, `data`) reach it as `self.client`.
+    // modules (`catalog`, `data`, `relation_structure`) reach it as `self.client`.
     client: Client,
 }
 
