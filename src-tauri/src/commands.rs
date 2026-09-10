@@ -6,8 +6,8 @@ use tauri::State;
 use crate::pg;
 use crate::state::DbState;
 use crate::types::{
-    ConnectionConfig, ConnectionResult, ForeignKeyInfo, IndexInfo, RoleInfo, RowData,
-    SortDirection, TableData, TableInfo, TablePrivilege,
+    ConnectionConfig, ConnectionResult, ForeignKeyInfo, IndexInfo, RelationStructure, RoleInfo,
+    RowData, SortDirection, TableData, TableInfo, TablePrivilege,
 };
 
 const DEFAULT_PAGE_SIZE: i64 = 100;
@@ -88,6 +88,20 @@ pub async fn get_table_data(
             sort_column.as_deref(),
             sort_direction.unwrap_or_default(),
         )
+        .await
+}
+
+#[tauri::command]
+pub async fn get_relation_structure(
+    schema: String,
+    relation: String,
+    state: State<'_, DbState>,
+) -> Result<RelationStructure, String> {
+    let guard = state.connection.lock().await;
+    guard
+        .as_ref()
+        .ok_or_else(not_connected)?
+        .relation_structure(&schema, &relation)
         .await
 }
 

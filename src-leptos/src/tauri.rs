@@ -3,6 +3,8 @@ use serde::Serialize;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
+use crate::types::RelationStructure;
+
 fn get_invoke_fn() -> Result<js_sys::Function, String> {
     let window = web_sys::window().ok_or("no global window")?;
 
@@ -35,6 +37,23 @@ pub async fn invoke<T: DeserializeOwned>(cmd: &str, args: impl Serialize) -> Res
         .map_err(|e| e.as_string().unwrap_or_else(|| format!("{:?}", e)))?;
 
     serde_wasm_bindgen::from_value(js_result).map_err(|e| e.to_string())
+}
+
+/// Fetch all column metadata for one relation.
+///
+/// `schema` and `relation` match the command's explicit relation identity.
+pub async fn get_relation_structure(
+    relation: &str,
+    schema: &str,
+) -> Result<RelationStructure, String> {
+    invoke(
+        "get_relation_structure",
+        &serde_json::json!({
+            "relation": relation,
+            "schema": schema,
+        }),
+    )
+    .await
 }
 
 /// Call a Tauri command that returns nothing.

@@ -16,6 +16,7 @@ pub fn run() {
             commands::connect_to_db,
             commands::get_tables,
             commands::get_table_data,
+            commands::get_relation_structure,
             commands::get_foreign_keys,
             commands::get_indexes,
             commands::get_roles,

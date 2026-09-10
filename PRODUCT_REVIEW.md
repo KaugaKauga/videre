@@ -197,17 +197,149 @@ Recommended relation tabs:
 
 Views can additionally expose **Definition**, and partitioned tables can expose **Partitions** where relevant.
 
-#### Planned first structure slice — Relation and columns
+#### Feature brief — Column information drawer
 
-This is the next implementation task because it is entirely read-only, immediately useful, and establishes the metadata model needed by later constraints, filtering, and object inspection.
+**Status:** Planned — next read-only implementation slice.
 
-1. Add a lazily loaded **Structure** tab beside **Data** in each relation tab.
-2. Fetch relation kind and column metadata from `pg_catalog` only when Structure is opened.
-3. Show each column's ordinal position, exact case-preserved name, `format_type` result, nullability, default expression, identity property, generated property, and comment.
-4. Keep constraints, indexes, relationships, triggers, definitions, and partitions as later additions to the same Structure area rather than expanding this first slice.
-5. Let metadata failures affect Structure independently without breaking the Data view.
-6. Cover tables, views, custom or array types, defaults, identity/generated columns, quoted identifiers, comments, and empty-column edge cases with live PostgreSQL integration tests.
-7. Add no dependency; the existing PostgreSQL catalog and Tauri/Leptos paths are sufficient.
+**Product outcome:** A user can understand what a column means and how PostgreSQL defines it without leaving the data they are reading, opening another tool, or writing catalog SQL.
+
+##### Entry point and interaction
+
+The action should live in each data-table column header because the column is already the user's visual context. Keep the existing header-label click for sorting and add a separate, compact information button beside the column name, FK badge, and sort indicator.
+
+- Use a recognizable information icon with the tooltip and accessible label `Column information for <column>`.
+- Keep the action in the DOM and keyboard-focusable at all times. It may be visually subdued until the header is hovered or contains keyboard focus, but discoverability must not depend on hover alone.
+- Clicking the information action must stop event propagation so it does not also change sorting.
+- Clicking the column label continues to cycle sorting and must not open the drawer.
+- Opening the drawer must preserve the current rows, page, sorting, and scroll position.
+- Use the existing right-side drawer surface. Column information and referenced-row information are mutually exclusive drawer modes; opening one replaces the other rather than stacking drawers.
+- The drawer title is the exact case-preserved column name. Its context line is the schema-qualified relation name and relation kind, for example `public.orders · table`.
+- Closing should work through the close button, backdrop, and `Escape`. Focus should return to the information button that opened it.
+
+A dedicated information button is preferable to making the whole header open the drawer because the header already has sorting behavior. It also leaves room to evolve the trailing header action into a column-actions menu later if filtering, copying the column name, or other actions are added.
+
+##### Required drawer information
+
+The first release must show authoritative PostgreSQL metadata, not inferred labels.
+
+**Overview**
+
+- Exact, case-preserved column name.
+- Ordinal position in the relation.
+- Schema-qualified relation identity.
+- Relation kind: table, partitioned table, view, materialized view, or foreign table.
+- Exact PostgreSQL type rendered with `format_type`, including modifiers such as `character varying(100)`, `numeric(12,2)`, arrays, domains, enums, and schema-qualified custom types.
+- Nullability.
+- Non-default collation when one is explicitly assigned.
+- Column comment, preserving multiline text.
+
+**Value generation**
+
+- Default expression using PostgreSQL's own deparsed expression.
+- Identity status: `ALWAYS`, `BY DEFAULT`, or not an identity column.
+- Generated status and generation expression. Support stored and virtual values when the connected PostgreSQL version exposes them.
+- Do not present an absent default as the same thing as a generated or identity value.
+
+**Constraints and relationships**
+
+- Primary-key membership and position within a composite primary key.
+- Unique-constraint membership and constraint name.
+- Foreign-key membership, including the complete source column list, schema-qualified target relation, complete target column list, and `ON UPDATE`/`ON DELETE` actions.
+- Check constraints associated with the column, shown by name and PostgreSQL definition.
+- Composite constraints must be represented as one complete constraint. Do not flatten them into incorrect one-column relationships.
+
+Use clear labels and compact sections rather than a raw catalog dump. Optional or unavailable fields should be omitted or shown as `Not applicable`; they must not be reported as false facts. Expressions, comments, names, and relationship targets must be naturally selectable and copyable.
+
+##### Loading, caching, and errors
+
+- Do not add this metadata to connection startup.
+- Open the drawer immediately with a loading state, then fetch metadata lazily on the first column-information request for that relation.
+- Prefer fetching and caching metadata for all columns in the relation in one relation-scoped request. This makes subsequent column clicks immediate and provides the data model for a future full Structure tab.
+- Cache by exact schema and relation identity; relations with the same name in different schemas must never share metadata.
+- A metadata failure affects only the drawer. Existing table data remains visible and usable.
+- Show a concise error with a retry action. Do not close the drawer automatically.
+- A later explicit metadata refresh must be able to invalidate this cache.
+
+##### Suggested IPC model
+
+Keep the DTO engine-agnostic even though PostgreSQL supplies the first implementation. A suitable shape is:
+
+```text
+RelationStructure
+  schema
+  relation
+  relation_kind
+  columns[]
+
+ColumnInfo
+  name
+  ordinal_position
+  data_type
+  nullable
+  collation?
+  default_expression?
+  identity?
+  generated?
+  generation_expression?
+  comment?
+  constraints[]
+
+ColumnConstraint
+  name
+  kind: primary_key | unique | foreign_key | check
+  definition
+  column_position?
+  source_columns[]
+  target_schema?
+  target_relation?
+  target_columns[]
+  on_update?
+  on_delete?
+```
+
+The exact Rust representation may use enums and smaller nested types, but it must preserve the distinctions above and must not expose PostgreSQL driver types across the IPC boundary.
+
+##### PostgreSQL metadata source
+
+Use `pg_catalog`, with schema and relation supplied as query parameters. The implementation should be based on:
+
+- `pg_class` and `pg_namespace` for exact relation identity and `relkind`.
+- `pg_attribute` for column order, nullability, identity, generated state, type OID/modifier, and collation.
+- `format_type(atttypid, atttypmod)` for exact type display.
+- `pg_attrdef` with `pg_get_expr` for default and generation expressions.
+- `col_description` for comments.
+- `pg_constraint`, `unnest(... WITH ORDINALITY)`, and `pg_get_constraintdef` for key, foreign-key, and check information.
+
+Exclude dropped and system columns. Preserve catalog order and exact identifier casing. Add no dependency; the existing PostgreSQL, Tauri, and Leptos paths are sufficient.
+
+##### Acceptance criteria
+
+1. Every visible data column has a keyboard-accessible information action in its header.
+2. Activating it opens one drawer for the correct schema, relation, and column without changing sort or pagination.
+3. Numeric modifiers, arrays, custom types, nullability, defaults, identity/generated properties, comments, and relation kind match PostgreSQL's catalogs.
+4. Primary, unique, foreign-key, and check constraints are accurate; composite keys remain composite and ordered.
+5. A column with little metadata still shows its name, position, type, and nullability without an empty or broken drawer.
+6. Views and materialized views show valid column information without table-only assumptions.
+7. Loading and errors are isolated from the Data view, and retry works.
+8. A second column in the same relation opens from the relation-scoped cache without another metadata request.
+9. Two same-named relations in different schemas never share cached metadata.
+10. Drawer content is selectable and copyable, and the interaction is usable by keyboard.
+
+##### Test expectations
+
+- Add backend unit tests for catalog-code mappings such as relation kind, identity, generated state, and foreign-key actions.
+- Add live PostgreSQL integration tests using the project database plus temporary fixture objects for quoted identifiers, type modifiers, arrays, enums/domains, comments, defaults, identity, generated columns, composite primary/unique/foreign keys, checks, views, and materialized views.
+- Assert catalog results through the real `Connection` adapter; do not mock PostgreSQL behavior.
+- Add frontend tests for drawer-state selection, relation-scoped cache keys, field presentation, and the separation between sort clicks and information-action clicks.
+
+##### Explicitly out of scope for this slice
+
+- Editing column definitions.
+- Server-side filtering or a query-expression builder.
+- Full index definitions and index usage statistics.
+- Trigger details, partition trees, and complete view definitions.
+- Storage statistics and per-column statistics.
+- A full Structure tab. The relation-scoped response should enable that later, but this slice is the contextual column drawer only.
 
 ### 4. Missing everyday reader interactions
 

@@ -195,6 +195,9 @@ pub fn DataTable(
     on_sort: Callback<Option<SortSpec>>,
     #[prop(optional)] fk_columns: Option<HashMap<String, ForeignKeyInfo>>,
     #[prop(optional)] fk_click: Option<RwSignal<Option<(ForeignKeyInfo, serde_json::Value)>>>,
+    /// Receives the selected column name for the column-information drawer.
+    #[prop(optional)]
+    column_info_click: Option<Callback<String>>,
 ) -> impl IntoView {
     let fk_map = fk_columns.unwrap_or_default();
 
@@ -223,6 +226,9 @@ pub fn DataTable(
                                 let clicked_name = name.clone();
                                 let indicator_name = name.clone();
                                 let is_fk = fk_by_idx.contains_key(&idx);
+                                let info_column = name.clone();
+                                let column_info_click = column_info_click;
+                                let info_label = format!("Column information for {name}");
                                 view! {
                                     <th
                                         class="data-table-th"
@@ -255,6 +261,21 @@ pub fn DataTable(
                                                     view! { <span class="sort-indicator sort-inactive">{"\u{25B2}"}</span> }.into_any()
                                                 }
                                             }}
+                                            <button
+                                                class="column-info-button"
+                                                type="button"
+                                                title=info_label.clone()
+                                                aria-label=info_label
+                                                data-column-info-for=info_column.clone()
+                                                on:click=move |ev: web_sys::MouseEvent| {
+                                                    ev.stop_propagation();
+                                                    if let Some(callback) = column_info_click {
+                                                        callback.run(info_column.clone());
+                                                    }
+                                                }
+                                            >
+                                                <span aria-hidden="true">"ⓘ"</span>
+                                            </button>
                                         </span>
                                     </th>
                                 }

@@ -49,6 +49,58 @@ pub struct ForeignKeyInfo {
     pub foreign_column_name: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RelationStructureKey {
+    pub schema: String,
+    pub relation: String,
+}
+
+impl RelationStructureKey {
+    pub fn new(schema: impl Into<String>, relation: impl Into<String>) -> Self {
+        Self {
+            schema: schema.into(),
+            relation: relation.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelationStructure {
+    pub schema: String,
+    pub relation: String,
+    pub relation_kind: String,
+    pub columns: Vec<ColumnInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ColumnInfo {
+    pub name: String,
+    pub ordinal_position: i32,
+    pub data_type: String,
+    pub nullable: bool,
+    pub collation: Option<String>,
+    pub default_expression: Option<String>,
+    pub identity: Option<String>,
+    pub generated: Option<String>,
+    pub generation_expression: Option<String>,
+    pub comment: Option<String>,
+    pub constraints: Vec<ColumnConstraint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ColumnConstraint {
+    pub name: String,
+    pub kind: String,
+    pub definition: String,
+    pub column_position: Option<i32>,
+    pub source_columns: Vec<String>,
+    pub target_schema: Option<String>,
+    pub target_relation: Option<String>,
+    pub target_columns: Vec<String>,
+    pub on_update: Option<String>,
+    pub on_delete: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexInfo {
     pub index_name: String,
@@ -173,6 +225,74 @@ mod tests {
         let parsed: ForeignKeyInfo = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.column_name, "god_id");
         assert_eq!(parsed.foreign_table_name, "gods");
+    }
+
+    #[test]
+    fn relation_structure_deserializes_ipc_contract() {
+        let json_str = r#"{
+            "schema":"public",
+            "relation":"orders",
+            "relation_kind":"table",
+            "columns":[{
+                "name":"total",
+                "ordinal_position":2,
+                "data_type":"numeric(12,2)",
+                "nullable":false,
+                "collation":null,
+                "default_expression":"0",
+                "identity":null,
+                "generated":null,
+                "generation_expression":null,
+                "comment":"Order total",
+                "constraints":[{
+                    "name":"orders_total_check",
+                    "kind":"check",
+                    "definition":"CHECK ((total >= 0))",
+                    "column_position":null,
+                    "source_columns":["total"],
+                    "target_schema":null,
+                    "target_relation":null,
+                    "target_columns":[],
+                    "on_update":null,
+                    "on_delete":null
+                }]
+            }]
+        }"#;
+
+        let structure: RelationStructure = serde_json::from_str(json_str).unwrap();
+        assert_eq!(structure.columns[0].data_type, "numeric(12,2)");
+        assert_eq!(structure.columns[0].constraints[0].kind, "check");
+    }
+
+    #[test]
+    fn relation_structure_accepts_omitted_optional_metadata() {
+        let json_str = r#"{
+            "schema":"public",
+            "relation":"orders",
+            "relation_kind":"table",
+            "columns":[{
+                "name":"id",
+                "ordinal_position":1,
+                "data_type":"integer",
+                "nullable":false,
+                "constraints":[]
+            }]
+        }"#;
+
+        let structure: RelationStructure = serde_json::from_str(json_str).unwrap();
+        let column = &structure.columns[0];
+        assert!(column.collation.is_none());
+        assert!(column.default_expression.is_none());
+        assert!(column.identity.is_none());
+        assert!(column.comment.is_none());
+    }
+
+    #[test]
+    fn relation_structure_cache_key_is_schema_scoped() {
+        assert_ne!(
+            RelationStructureKey::new("public", "orders"),
+            RelationStructureKey::new("archive", "orders")
+        );
     }
 
     #[test]

@@ -4,7 +4,10 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::tauri;
-use crate::types::{ForeignKeyInfo, IndexInfo, RoleInfo, TableInfo, TablePrivilege};
+use crate::types::{
+    ForeignKeyInfo, IndexInfo, RelationStructure, RelationStructureKey, RoleInfo, TableInfo,
+    TablePrivilege,
+};
 
 type ForeignKeyMap = HashMap<String, Vec<ForeignKeyInfo>>;
 type IndexMap = HashMap<String, Vec<IndexInfo>>;
@@ -22,6 +25,7 @@ pub struct DbStore {
     pub tables: RwSignal<Vec<TableInfo>>,
     pub foreign_keys: RwSignal<ForeignKeyMap>,
     pub indexes: RwSignal<IndexMap>,
+    pub relation_structures: RwSignal<HashMap<RelationStructureKey, RelationStructure>>,
     pub roles: RwSignal<Vec<RoleInfo>>,
     pub table_privileges: RwSignal<Vec<TablePrivilege>>,
     pub is_loading: RwSignal<bool>,
@@ -36,6 +40,7 @@ impl DbStore {
             tables: RwSignal::new(Vec::new()),
             foreign_keys: RwSignal::new(HashMap::new()),
             indexes: RwSignal::new(HashMap::new()),
+            relation_structures: RwSignal::new(HashMap::new()),
             roles: RwSignal::new(Vec::new()),
             table_privileges: RwSignal::new(Vec::new()),
             is_loading: RwSignal::new(false),
@@ -144,6 +149,7 @@ impl DbStore {
             self.tables.set(Vec::new());
             self.foreign_keys.set(HashMap::new());
             self.indexes.set(HashMap::new());
+            self.relation_structures.set(HashMap::new());
             self.roles.set(Vec::new());
             self.table_privileges.set(Vec::new());
             self.error.set(None);
@@ -152,10 +158,9 @@ impl DbStore {
 
     // -- Lookup helpers --------------------------------------------------
     //
-    // These use `.get_untracked()` because they are called from component
-    // bodies as one-shot reads (e.g. building an FK map when a TablePage
-    // mounts).  The metadata is static for the lifetime of a connection so
-    // reactive tracking is not needed.
+    // These use `.get_untracked()` when called while a page mounts to build
+    // static metadata maps. Relation structures are an exception: an open
+    // drawer tracks its entry so explicit invalidation can refresh the view.
 
     /// Get foreign keys for a specific table.
     pub fn get_foreign_keys_for_table(
@@ -169,6 +174,34 @@ impl DbStore {
             .get(&key)
             .cloned()
             .unwrap_or_default()
+    }
+
+    /// Return cached column metadata for an exact schema/relation identity.
+    pub fn get_relation_structure(
+        &self,
+        schema: &str,
+        relation: &str,
+    ) -> Option<RelationStructure> {
+        self.relation_structures
+            .get()
+            .get(&RelationStructureKey::new(schema, relation))
+            .cloned()
+    }
+
+    /// Cache a relation's complete structure after a successful lazy fetch.
+    pub fn cache_relation_structure(&self, structure: RelationStructure) {
+        let key = RelationStructureKey::new(&structure.schema, &structure.relation);
+        self.relation_structures.update(|structures| {
+            structures.insert(key, structure);
+        });
+    }
+
+    /// Remove one cached relation so an explicit metadata refresh can refetch it.
+    #[allow(dead_code)]
+    pub fn invalidate_relation_structure(&self, schema: &str, relation: &str) {
+        self.relation_structures.update(|structures| {
+            structures.remove(&RelationStructureKey::new(schema, relation));
+        });
     }
 
     /// Get indexes for a specific table.
