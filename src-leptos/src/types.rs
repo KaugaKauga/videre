@@ -21,6 +21,19 @@ pub struct TableInfo {
     pub schema: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SortDirection {
+    Asc,
+    Desc,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SortSpec {
+    pub column: String,
+    pub direction: SortDirection,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableData {
     pub columns: Vec<String>,

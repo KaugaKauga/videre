@@ -8,7 +8,7 @@ use crate::components::drawer::Drawer;
 use crate::components::icons;
 use crate::stores::db_store::DbStore;
 use crate::tauri;
-use crate::types::{ForeignKeyInfo, RowData, TableData};
+use crate::types::{ForeignKeyInfo, RowData, SortSpec, TableData};
 
 const PAGE_SIZE: i64 = 100;
 
@@ -17,16 +17,22 @@ fn fetch_page(
     name: &str,
     schema: &str,
     page: usize,
+    sort: Option<SortSpec>,
     data: RwSignal<Option<TableData>>,
+    request_id: RwSignal<u64>,
     is_loading: RwSignal<bool>,
     error: RwSignal<Option<String>>,
 ) {
     let name = name.to_string();
     let schema = schema.to_string();
+    let this_request = request_id.get_untracked().wrapping_add(1);
+    request_id.set(this_request);
     is_loading.set(true);
     error.set(None);
 
     spawn_local(async move {
+        let sort_column = sort.as_ref().map(|sort| sort.column.as_str());
+        let sort_direction = sort.as_ref().map(|sort| sort.direction);
         match tauri::invoke::<TableData>(
             "get_table_data",
             &serde_json::json!({
@@ -34,15 +40,23 @@ fn fetch_page(
                 "schema": schema,
                 "limit": PAGE_SIZE,
                 "offset": (page as i64) * PAGE_SIZE,
+                "sortColumn": sort_column,
+                "sortDirection": sort_direction,
             }),
         )
         .await
         {
             Ok(result) => {
+                if request_id.get_untracked() != this_request {
+                    return;
+                }
                 data.set(Some(result));
                 is_loading.set(false);
             }
             Err(e) => {
+                if request_id.get_untracked() != this_request {
+                    return;
+                }
                 error.set(Some(format!("Failed to fetch data: {e}")));
                 is_loading.set(false);
             }
@@ -100,7 +114,9 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
 
     // ---- Table data state --------------------------------------------------
     let page = RwSignal::new(0_usize);
+    let sort: RwSignal<Option<SortSpec>> = RwSignal::new(None);
     let data: RwSignal<Option<TableData>> = RwSignal::new(None);
+    let request_id = RwSignal::new(0_u64);
     let is_loading = RwSignal::new(true);
     let error: RwSignal<Option<String>> = RwSignal::new(None);
 
@@ -122,7 +138,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
         .collect();
 
     // ---- Initial data fetch ------------------------------------------------
-    fetch_page(&name, &schema, 0, data, is_loading, error);
+    fetch_page(&name, &schema, 0, None, data, request_id, is_loading, error);
 
     // ---- Handle FK clicks --------------------------------------------------
     // Watch the fk_click signal; when set, open the detail panel.
@@ -147,7 +163,16 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
     let on_prev = move |_: web_sys::MouseEvent| {
         let p = page.get_untracked().saturating_sub(1);
         page.set(p);
-        fetch_page(&name_prev, &schema_prev, p, data, is_loading, error);
+        fetch_page(
+            &name_prev,
+            &schema_prev,
+            p,
+            sort.get_untracked(),
+            data,
+            request_id,
+            is_loading,
+            error,
+        );
     };
 
     let name_next = name.clone();
@@ -155,9 +180,35 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
     let on_next = move |_: web_sys::MouseEvent| {
         let p = page.get_untracked() + 1;
         page.set(p);
-        fetch_page(&name_next, &schema_next, p, data, is_loading, error);
+        fetch_page(
+            &name_next,
+            &schema_next,
+            p,
+            sort.get_untracked(),
+            data,
+            request_id,
+            is_loading,
+            error,
+        );
     };
     let _ = &on_next;
+
+    let name_sort = name.clone();
+    let schema_sort = schema.clone();
+    let on_sort = Callback::new(move |next: Option<SortSpec>| {
+        sort.set(next.clone());
+        page.set(0);
+        fetch_page(
+            &name_sort,
+            &schema_sort,
+            0,
+            next,
+            data,
+            request_id,
+            is_loading,
+            error,
+        );
+    });
 
     // ---- Display name ------------------------------------------------------
     let display_name = name.clone();
@@ -218,6 +269,8 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                         <DataTable
                             columns=cols
                             rows=rows
+                            sort=sort
+                            on_sort=on_sort
                             fk_columns=fk_map.clone()
                             fk_click=fk_click
                         />

@@ -95,6 +95,10 @@ impl ColumnPlan {
         self.columns.iter().map(|c| c.name.clone()).collect()
     }
 
+    pub fn has_column(&self, name: &str) -> bool {
+        self.columns.iter().any(|column| column.name == name)
+    }
+
     /// How to compare `column` against a bound key value, or `None` if the
     /// relation has no column by that name.
     pub fn key_predicate(&self, column: &str) -> Option<KeyPredicate> {
@@ -117,6 +121,60 @@ impl ColumnPlan {
             });
         }
         Ok(parts.join(", "))
+    }
+
+    /// A total, deterministic order for paginated reads.
+    ///
+    /// Primary-key columns retain their native types so PostgreSQL can use the
+    /// primary-key index. Relations without a primary key are ordered by every
+    /// displayed value in PostgreSQL's own text form. Rows tied by that fallback
+    /// are indistinguishable in the UI.
+    pub fn order_by(
+        &self,
+        primary_key: &[String],
+        sort_column: Option<&str>,
+        descending: bool,
+        native_sort: bool,
+    ) -> Result<String, String> {
+        let valid_primary_key = !primary_key.is_empty()
+            && primary_key
+                .iter()
+                .all(|name| self.columns.iter().any(|column| column.name == *name));
+
+        let mut terms = Vec::new();
+        if let Some(name) = sort_column {
+            if !self.columns.iter().any(|column| column.name == name) {
+                return Err(format!("Unknown sort column {name:?}"));
+            }
+
+            let ident = quote_ident(name)?;
+            let expression = if native_sort {
+                ident
+            } else {
+                format!("{ident}::text COLLATE \"C\"")
+            };
+            let direction = if descending { "DESC" } else { "ASC" };
+            terms.push(format!("{expression} {direction} NULLS LAST"));
+        }
+
+        if valid_primary_key {
+            for name in primary_key {
+                if sort_column != Some(name.as_str()) {
+                    terms.push(format!("{} ASC", quote_ident(name)?));
+                }
+            }
+        } else {
+            for column in &self.columns {
+                if sort_column != Some(column.name.as_str()) {
+                    terms.push(format!(
+                        "{}::text COLLATE \"C\" ASC NULLS FIRST",
+                        quote_ident(&column.name)?
+                    ));
+                }
+            }
+        }
+
+        Ok(terms.join(", "))
     }
 
     /// Decode one row into JSON values, in the same order as [`names`].
@@ -466,6 +524,74 @@ mod tests {
     fn select_list_escapes_column_names() {
         let plan = ColumnPlan::from_parts(&[("we\"ird", Type::TIMESTAMPTZ)]);
         assert_eq!(plan.select_list().unwrap(), "\"we\"\"ird\"::text");
+    }
+
+    #[test]
+    fn pagination_order_prefers_the_primary_key() {
+        let plan = ColumnPlan::from_parts(&[
+            ("tenant_id", Type::INT4),
+            ("entry_id", Type::UUID),
+            ("payload", Type::JSONB),
+        ]);
+
+        assert_eq!(
+            plan.order_by(&["tenant_id".into(), "entry_id".into()], None, false, true,)
+                .unwrap(),
+            "\"tenant_id\" ASC, \"entry_id\" ASC"
+        );
+    }
+
+    #[test]
+    fn pagination_order_falls_back_to_all_columns_as_text() {
+        let plan = ColumnPlan::from_parts(&[("payload", Type::JSON), ("Mixed Case", Type::INT4)]);
+
+        assert_eq!(
+            plan.order_by(&[], None, false, true).unwrap(),
+            "\"payload\"::text COLLATE \"C\" ASC NULLS FIRST, \"Mixed Case\"::text COLLATE \"C\" ASC NULLS FIRST"
+        );
+    }
+
+    #[test]
+    fn pagination_order_rejects_an_incomplete_catalog_key() {
+        let plan = ColumnPlan::from_parts(&[("id", Type::INT4), ("name", Type::TEXT)]);
+
+        assert_eq!(
+            plan.order_by(&["missing".into()], None, false, true)
+                .unwrap(),
+            "\"id\"::text COLLATE \"C\" ASC NULLS FIRST, \"name\"::text COLLATE \"C\" ASC NULLS FIRST"
+        );
+    }
+
+    #[test]
+    fn requested_sort_uses_native_type_and_primary_key_tiebreaker() {
+        let plan = ColumnPlan::from_parts(&[("id", Type::INT4), ("rank", Type::INT4)]);
+
+        assert_eq!(
+            plan.order_by(&["id".into()], Some("rank"), true, true)
+                .unwrap(),
+            "\"rank\" DESC NULLS LAST, \"id\" ASC"
+        );
+    }
+
+    #[test]
+    fn requested_sort_can_fall_back_to_postgres_text() {
+        let plan = ColumnPlan::from_parts(&[("id", Type::INT4), ("payload", Type::JSON)]);
+
+        assert_eq!(
+            plan.order_by(&["id".into()], Some("payload"), false, false)
+                .unwrap(),
+            "\"payload\"::text COLLATE \"C\" ASC NULLS LAST, \"id\" ASC"
+        );
+    }
+
+    #[test]
+    fn unknown_sort_column_is_rejected() {
+        let plan = ColumnPlan::from_parts(&[("id", Type::INT4)]);
+        let error = plan
+            .order_by(&["id".into()], Some("id; DROP TABLE gods"), false, true)
+            .unwrap_err();
+
+        assert!(error.contains("Unknown sort column"), "{error}");
     }
 
     #[test]

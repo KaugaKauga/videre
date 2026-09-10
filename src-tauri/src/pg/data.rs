@@ -2,7 +2,8 @@
 
 use super::convert::{bind_key, qualified_name, quote_ident, ColumnPlan};
 use super::Connection;
-use crate::types::{RowData, TableData};
+use crate::types::{RowData, SortDirection, TableData};
+use tokio_postgres::error::SqlState;
 
 impl Connection {
     /// Ask the server for the shape of `SELECT *` before reading any rows.
@@ -19,12 +20,63 @@ impl Connection {
         Ok(ColumnPlan::from_columns(stmt.columns()))
     }
 
+    /// Primary-key columns in constraint order. An empty result means the
+    /// relation needs the all-column fallback used by [`ColumnPlan::order_by`].
+    async fn primary_key_columns(
+        &self,
+        schema: &str,
+        table_name: &str,
+    ) -> Result<Vec<String>, String> {
+        let query = "
+            SELECT attribute.attname
+            FROM pg_catalog.pg_class relation
+            JOIN pg_catalog.pg_namespace namespace
+                ON namespace.oid = relation.relnamespace
+            JOIN pg_catalog.pg_index index
+                ON index.indrelid = relation.oid
+                AND index.indisprimary
+            JOIN LATERAL unnest(index.indkey) WITH ORDINALITY
+                AS key_column(attnum, position) ON key_column.attnum > 0
+            JOIN pg_catalog.pg_attribute attribute
+                ON attribute.attrelid = relation.oid
+                AND attribute.attnum = key_column.attnum
+            WHERE namespace.nspname = $1
+                AND relation.relname = $2
+            ORDER BY key_column.position
+        ";
+
+        self.client
+            .query(query, &[&schema, &table_name])
+            .await
+            .map(|rows| rows.iter().map(|row| row.get(0)).collect())
+            .map_err(|e| format!("Failed to inspect primary key: {e}"))
+    }
+
+    async fn supports_native_sort(&self, relation: &str, column: &str) -> Result<bool, String> {
+        let ident = quote_ident(column)?;
+        let probe = format!("SELECT {ident} FROM {relation} ORDER BY {ident} LIMIT 0");
+
+        match self.client.prepare(&probe).await {
+            Ok(_) => Ok(true),
+            Err(error)
+                if error
+                    .as_db_error()
+                    .is_some_and(|db_error| db_error.code() == &SqlState::UNDEFINED_FUNCTION) =>
+            {
+                Ok(false)
+            }
+            Err(error) => Err(format!("Failed to inspect sort support: {error}")),
+        }
+    }
+
     pub async fn table_data(
         &self,
         schema: &str,
         table_name: &str,
         limit: i64,
         offset: i64,
+        sort_column: Option<&str>,
+        sort_direction: SortDirection,
     ) -> Result<TableData, String> {
         let relation = qualified_name(schema, table_name)?;
         let plan = self.column_plan(&relation).await?;
@@ -38,9 +90,26 @@ impl Connection {
             });
         }
 
+        if let Some(column) = sort_column {
+            if !plan.has_column(column) {
+                return Err(format!("Unknown sort column {column:?}"));
+            }
+        }
+
+        let primary_key = self.primary_key_columns(schema, table_name).await?;
+        let native_sort = match sort_column {
+            Some(column) => self.supports_native_sort(&relation, column).await?,
+            None => true,
+        };
         let data_query = format!(
-            "SELECT {} FROM {relation} LIMIT $1 OFFSET $2",
-            plan.select_list()?
+            "SELECT {} FROM {relation} ORDER BY {} LIMIT $1 OFFSET $2",
+            plan.select_list()?,
+            plan.order_by(
+                &primary_key,
+                sort_column,
+                sort_direction.is_descending(),
+                native_sort,
+            )?
         );
         let rows = self
             .client
@@ -299,7 +368,14 @@ mod live {
 
         let relation = qualified_name("videre_types_test", "every_type").unwrap();
         let data = conn
-            .table_data("videre_types_test", "every_type", 100, 0)
+            .table_data(
+                "videre_types_test",
+                "every_type",
+                100,
+                0,
+                None,
+                SortDirection::Asc,
+            )
             .await
             .unwrap();
 
@@ -453,7 +529,14 @@ mod live {
         create_type_matrix(&conn).await;
 
         let data = conn
-            .table_data("videre_types_test", "every_type", 100, 0)
+            .table_data(
+                "videre_types_test",
+                "every_type",
+                100,
+                0,
+                None,
+                SortDirection::Asc,
+            )
             .await
             .unwrap();
         let ord = data.columns.iter().position(|c| c == "ord").unwrap();
@@ -493,7 +576,10 @@ mod live {
     #[ignore]
     async fn seeded_timestamps_are_no_longer_null() {
         let conn = connect().await;
-        let data = conn.table_data("public", "gods", 5, 0).await.unwrap();
+        let data = conn
+            .table_data("public", "gods", 5, 0, None, SortDirection::Asc)
+            .await
+            .unwrap();
 
         let created_at = data
             .columns
@@ -562,7 +648,14 @@ mod live {
             .unwrap();
 
         let data = conn
-            .table_data("videre_convert_test", "every_type", 10, 0)
+            .table_data(
+                "videre_convert_test",
+                "every_type",
+                10,
+                0,
+                None,
+                SortDirection::Asc,
+            )
             .await
             .unwrap();
         let names = &data.columns;
@@ -695,6 +788,212 @@ mod live {
 
         conn.client
             .batch_execute("DROP SCHEMA videre_key_test CASCADE;")
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn pagination_is_deterministic_with_and_without_a_primary_key() {
+        let conn = connect().await;
+        conn.client
+            .batch_execute(
+                "DROP SCHEMA IF EXISTS videre_pagination_test CASCADE;
+                 CREATE SCHEMA videre_pagination_test;
+                 CREATE TABLE videre_pagination_test.with_pk (
+                     tenant_id integer NOT NULL,
+                     entry_id integer NOT NULL,
+                     label text NOT NULL,
+                     PRIMARY KEY (tenant_id, entry_id)
+                 );
+                 INSERT INTO videre_pagination_test.with_pk VALUES
+                     (2, 2, 'fourth'), (1, 2, 'second'),
+                     (2, 1, 'third'), (1, 1, 'first');
+                 CREATE TABLE videre_pagination_test.without_pk (
+                     label text,
+                     rank integer
+                 );
+                 INSERT INTO videre_pagination_test.without_pk VALUES
+                     ('charlie', 3), ('alpha', 1), ('bravo', 2);",
+            )
+            .await
+            .unwrap();
+
+        let first = conn
+            .table_data(
+                "videre_pagination_test",
+                "with_pk",
+                2,
+                0,
+                None,
+                SortDirection::Asc,
+            )
+            .await
+            .unwrap();
+        let second = conn
+            .table_data(
+                "videre_pagination_test",
+                "with_pk",
+                2,
+                2,
+                None,
+                SortDirection::Asc,
+            )
+            .await
+            .unwrap();
+        let pk_rows = first
+            .rows
+            .into_iter()
+            .chain(second.rows)
+            .map(|row| (row[0].as_i64().unwrap(), row[1].as_i64().unwrap()))
+            .collect::<Vec<_>>();
+        assert_eq!(pk_rows, vec![(1, 1), (1, 2), (2, 1), (2, 2)]);
+
+        let first = conn
+            .table_data(
+                "videre_pagination_test",
+                "without_pk",
+                2,
+                0,
+                None,
+                SortDirection::Asc,
+            )
+            .await
+            .unwrap();
+        let second = conn
+            .table_data(
+                "videre_pagination_test",
+                "without_pk",
+                2,
+                2,
+                None,
+                SortDirection::Asc,
+            )
+            .await
+            .unwrap();
+        let labels = first
+            .rows
+            .into_iter()
+            .chain(second.rows)
+            .map(|row| row[0].as_str().unwrap().to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(labels, vec!["alpha", "bravo", "charlie"]);
+
+        conn.client
+            .batch_execute("DROP SCHEMA videre_pagination_test CASCADE;")
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn server_sorting_uses_postgres_types_across_pages() {
+        let conn = connect().await;
+        conn.client
+            .batch_execute(
+                "DROP SCHEMA IF EXISTS videre_sort_test CASCADE;
+                 CREATE SCHEMA videre_sort_test;
+                 CREATE TABLE videre_sort_test.entries (
+                     id integer PRIMARY KEY,
+                     name text NOT NULL,
+                     score integer,
+                     occurred_on date NOT NULL,
+                     payload json NOT NULL
+                 );
+                 INSERT INTO videre_sort_test.entries VALUES
+                     (1, 'Zeus', 10, '2024-01-10', '{\"n\": 2}'),
+                     (2, 'Athena', 2, '2024-01-02', '{\"n\": 10}'),
+                     (3, 'Apollo', 2, '2024-01-03', '{\"n\": 3}'),
+                     (4, 'Hera', NULL, '2024-01-01', '{\"n\": 4}');",
+            )
+            .await
+            .unwrap();
+
+        let page = |offset, column, direction| {
+            conn.table_data(
+                "videre_sort_test",
+                "entries",
+                2,
+                offset,
+                Some(column),
+                direction,
+            )
+        };
+
+        let first = page(0, "score", SortDirection::Asc).await.unwrap();
+        let second = page(2, "score", SortDirection::Asc).await.unwrap();
+        let ids = first
+            .rows
+            .into_iter()
+            .chain(second.rows)
+            .map(|row| row[0].as_i64().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(ids, vec![2, 3, 1, 4]);
+
+        let descending = conn
+            .table_data(
+                "videre_sort_test",
+                "entries",
+                10,
+                0,
+                Some("score"),
+                SortDirection::Desc,
+            )
+            .await
+            .unwrap();
+        let ids = descending
+            .rows
+            .iter()
+            .map(|row| row[0].as_i64().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(ids, vec![1, 2, 3, 4], "NULL remains last");
+
+        let by_date = conn
+            .table_data(
+                "videre_sort_test",
+                "entries",
+                10,
+                0,
+                Some("occurred_on"),
+                SortDirection::Asc,
+            )
+            .await
+            .unwrap();
+        let ids = by_date
+            .rows
+            .iter()
+            .map(|row| row[0].as_i64().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(ids, vec![4, 2, 3, 1]);
+
+        let by_json = conn
+            .table_data(
+                "videre_sort_test",
+                "entries",
+                10,
+                0,
+                Some("payload"),
+                SortDirection::Asc,
+            )
+            .await
+            .unwrap();
+        assert_eq!(by_json.rows.len(), 4, "json falls back to text ordering");
+
+        let error = conn
+            .table_data(
+                "videre_sort_test",
+                "entries",
+                10,
+                0,
+                Some("id; DROP TABLE entries"),
+                SortDirection::Asc,
+            )
+            .await
+            .unwrap_err();
+        assert!(error.contains("Unknown sort column"), "{error}");
+
+        conn.client
+            .batch_execute("DROP SCHEMA videre_sort_test CASCADE;")
             .await
             .unwrap();
     }

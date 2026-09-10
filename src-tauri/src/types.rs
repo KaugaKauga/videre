@@ -68,6 +68,20 @@ pub struct TablePrivilege {
     pub privileges: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SortDirection {
+    #[default]
+    Asc,
+    Desc,
+}
+
+impl SortDirection {
+    pub fn is_descending(self) -> bool {
+        matches!(self, Self::Desc)
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct TableData {
     pub columns: Vec<String>,

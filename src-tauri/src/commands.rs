@@ -6,8 +6,8 @@ use tauri::State;
 use crate::pg;
 use crate::state::DbState;
 use crate::types::{
-    ConnectionConfig, ConnectionResult, ForeignKeyInfo, IndexInfo, RoleInfo, RowData, TableData,
-    TableInfo, TablePrivilege,
+    ConnectionConfig, ConnectionResult, ForeignKeyInfo, IndexInfo, RoleInfo, RowData,
+    SortDirection, TableData, TableInfo, TablePrivilege,
 };
 
 const DEFAULT_PAGE_SIZE: i64 = 100;
@@ -72,6 +72,8 @@ pub async fn get_table_data(
     schema: String,
     limit: Option<i64>,
     offset: Option<i64>,
+    sort_column: Option<String>,
+    sort_direction: Option<SortDirection>,
     state: State<'_, DbState>,
 ) -> Result<TableData, String> {
     let guard = state.connection.lock().await;
@@ -83,6 +85,8 @@ pub async fn get_table_data(
             &table_name,
             limit.unwrap_or(DEFAULT_PAGE_SIZE),
             offset.unwrap_or(0),
+            sort_column.as_deref(),
+            sort_direction.unwrap_or_default(),
         )
         .await
 }
