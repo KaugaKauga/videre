@@ -2,6 +2,23 @@
 
 _Date: August 2026_
 
+_Last progress update: September 10, 2026_
+
+## Delivery progress
+
+Current focus: **P0 — Trustworthy Reader Mode**
+
+- [x] Deterministic PostgreSQL ordering and pagination.
+- [x] Server-side sorting across the complete relation.
+- [ ] Server-side filtering. **Next**
+- [ ] Refresh and reliable loading/error states.
+- [ ] Copy cell, copy row, and full-value inspection.
+- [ ] Schema-qualified relation identity.
+- [ ] Active connection identity and lifecycle controls.
+- [ ] Lazy metadata loading.
+
+Completed reader work is covered by backend unit tests, frontend unit tests, and live PostgreSQL integration tests using the project test database. The sorting implementation uses native PostgreSQL ordering where supported, explicit null placement, deterministic primary-key tie-breakers, and a safe text fallback for types without native ordering.
+
 ## Executive verdict
 
 Videre has a strong foundation for a focused PostgreSQL product. The current connection flow, desktop shell, tabs, compact data tables, and foreign-key drill-down form a coherent early experience.
@@ -62,8 +79,8 @@ The implemented product supports:
 - Recent connection profiles.
 - A resizable sidebar and desktop tab model.
 - A list of database relations.
-- Paginated row browsing.
-- Sorting of the currently loaded page.
+- Deterministically ordered, paginated row browsing.
+- Server-side sorting across the complete relation.
 - Foreign-key markers and referenced-row drawers.
 - A global index summary.
 - Role and direct table-grant inspection.
@@ -132,15 +149,15 @@ A later description could be:
 
 ### 2. Data browsing correctness
 
-The primary table experience currently has several trust issues.
+The primary table experience originally had several trust issues. Ordering and sorting are now resolved; exact counting remains open.
 
-#### Unordered pagination
+#### Unordered pagination — Resolved
 
-`src-tauri/src/pg/data.rs` fetches pages using `LIMIT` and `OFFSET` without `ORDER BY`. PostgreSQL does not guarantee row order without explicit ordering, so records can move, overlap, or be skipped between pages.
+Page fetches now always include deterministic ordering. Relations use their primary key, including composite keys, when available and fall back to PostgreSQL text ordering across displayed columns when no primary key exists.
 
-#### Page-local sorting
+#### Page-local sorting — Resolved
 
-`src-leptos/src/components/data_table.rs` sorts only the rows already loaded in the current page. The UI presents this like normal table sorting, which users can reasonably interpret as sorting the complete relation.
+Column-header sorting now executes in PostgreSQL across the complete relation. Sort changes reset to the first page, persist during pagination, place nulls last, and use primary-key columns as deterministic tie-breakers. Unknown columns are rejected before SQL construction.
 
 #### Expensive exact counts
 
@@ -360,14 +377,14 @@ The global Indexes page can remain as an overview, but each index should link ba
 
 ### P0 — Trustworthy Reader Mode
 
-1. Deterministic PostgreSQL ordering and pagination.
-2. Server-side sorting across the complete result.
-3. Server-side filtering.
-4. Refresh and reliable loading/error states.
-5. Copy cell, copy row, and full-value inspection.
-6. Schema-qualified relation identity.
-7. Active connection identity and lifecycle controls.
-8. Lazy metadata loading.
+1. [x] Deterministic PostgreSQL ordering and pagination.
+2. [x] Server-side sorting across the complete result.
+3. [ ] Server-side filtering. **Next**
+4. [ ] Refresh and reliable loading/error states.
+5. [ ] Copy cell, copy row, and full-value inspection.
+6. [ ] Schema-qualified relation identity.
+7. [ ] Active connection identity and lifecycle controls.
+8. [ ] Lazy metadata loading.
 
 ### P1 — Understand database objects
 
