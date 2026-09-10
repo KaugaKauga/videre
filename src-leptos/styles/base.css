@@ -905,6 +905,13 @@ kbd {
     overflow: hidden;
     text-overflow: ellipsis;
     font-variant-numeric: tabular-nums;
+    cursor: text;
+    user-select: text;
+    -webkit-user-select: text;
+}
+.data-table-td * {
+    user-select: text;
+    -webkit-user-select: text;
 }
 .data-table-empty {
     padding: 2rem 1rem;
@@ -1068,6 +1075,9 @@ kbd {
     font-size: var(--fs-ui);
     color: var(--foreground);
     word-break: break-all;
+    cursor: text;
+    user-select: text;
+    -webkit-user-select: text;
 }
 .row-detail-backdrop {
     position: absolute;

@@ -6,16 +6,18 @@ _Last progress update: September 10, 2026_
 
 ## Delivery progress
 
-Current focus: **P0 — Trustworthy Reader Mode**
+Current focus: **Reader interactions and relation structure**
 
 - [x] Deterministic PostgreSQL ordering and pagination.
 - [x] Server-side sorting across the complete relation.
-- [ ] Server-side filtering. **Next**
+- [x] Natural text selection and keyboard copying in data cells and referenced-row details.
+- [ ] Relation and column information. **Next read-only slice**
 - [ ] Refresh and reliable loading/error states.
-- [ ] Copy cell, copy row, and full-value inspection.
+- [ ] Explicit copy cell, copy row, and full-value inspection actions.
 - [ ] Schema-qualified relation identity.
 - [ ] Active connection identity and lifecycle controls.
 - [ ] Lazy metadata loading.
+- [ ] Server-side filtering. **Deferred until the query/filter model is designed deliberately.**
 
 Completed reader work is covered by backend unit tests, frontend unit tests, and live PostgreSQL integration tests using the project test database. The sorting implementation uses native PostgreSQL ordering where supported, explicit null placement, deterministic primary-key tie-breakers, and a safe text fallback for types without native ordering.
 
@@ -195,12 +197,25 @@ Recommended relation tabs:
 
 Views can additionally expose **Definition**, and partitioned tables can expose **Partitions** where relevant.
 
+#### Planned first structure slice — Relation and columns
+
+This is the next implementation task because it is entirely read-only, immediately useful, and establishes the metadata model needed by later constraints, filtering, and object inspection.
+
+1. Add a lazily loaded **Structure** tab beside **Data** in each relation tab.
+2. Fetch relation kind and column metadata from `pg_catalog` only when Structure is opened.
+3. Show each column's ordinal position, exact case-preserved name, `format_type` result, nullability, default expression, identity property, generated property, and comment.
+4. Keep constraints, indexes, relationships, triggers, definitions, and partitions as later additions to the same Structure area rather than expanding this first slice.
+5. Let metadata failures affect Structure independently without breaking the Data view.
+6. Cover tables, views, custom or array types, defaults, identity/generated columns, quoted identifiers, comments, and empty-column edge cases with live PostgreSQL integration tests.
+7. Add no dependency; the existing PostgreSQL catalog and Tauri/Leptos paths are sufficient.
+
 ### 4. Missing everyday reader interactions
 
 The main table surface should support:
 
 - Server-side filtering.
-- Server-side sorting across the complete result.
+- Server-side sorting across the complete result. **Resolved**
+- Natural text selection and keyboard copying. **Resolved**
 - Explicit refresh.
 - Copy cell.
 - Copy row.
@@ -209,7 +224,7 @@ The main table surface should support:
 - Configurable page size.
 - Export of the current filtered result to CSV or JSON.
 
-The global `user-select: none` declaration in `src-leptos/styles/base.css` currently prevents natural selection and copying. This conflicts with a fundamental database-reading workflow.
+The application keeps global `user-select: none` behavior for desktop-like chrome and controls, while data cells and referenced-row values now explicitly restore text selection. Users can mark values naturally and copy them with the platform keyboard shortcut. Explicit copy-cell and copy-row actions remain open.
 
 ### 5. Weak database and schema context
 
@@ -379,7 +394,7 @@ The global Indexes page can remain as an overview, but each index should link ba
 
 1. [x] Deterministic PostgreSQL ordering and pagination.
 2. [x] Server-side sorting across the complete result.
-3. [ ] Server-side filtering. **Next**
+3. [ ] Server-side filtering. **Deferred pending query-model design**
 4. [ ] Refresh and reliable loading/error states.
 5. [ ] Copy cell, copy row, and full-value inspection.
 6. [ ] Schema-qualified relation identity.
@@ -388,7 +403,7 @@ The global Indexes page can remain as an overview, but each index should link ba
 
 ### P1 — Understand database objects
 
-1. Relation structure and types.
+1. [ ] Relation structure and types. **Next read-only slice**
 2. Complete constraints.
 3. Full index definitions.
 4. Enhanced forward and reverse relationship navigation.
