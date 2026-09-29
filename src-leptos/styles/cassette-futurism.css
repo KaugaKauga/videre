@@ -481,6 +481,14 @@
     background: oklch(from var(--primary) l c h / 0.1);
     color: var(--primary);
 }
+.cassette-futurism .table-page-refresh {
+    padding: 0;
+    color: var(--primary);
+    border-color: var(--border);
+}
+.cassette-futurism .table-page-refresh:hover {
+    border-color: var(--primary);
+}
 
 /* ── 23 k · Data Table ───────────────────────────────────────────────────── */
 /*    This is the core of the theme — it's where the data actually lives.   */

@@ -11,12 +11,14 @@ Current focus: **Reader interactions and relation structure**
 - [x] Deterministic PostgreSQL ordering and pagination.
 - [x] Server-side sorting across the complete relation.
 - [x] Natural text selection and keyboard copying in data cells and referenced-row details.
-- [ ] Relation and column information. **Next read-only slice**
-- [ ] Refresh and reliable loading/error states.
+- [x] Lazy, relation-scoped column information drawer.
+- [ ] Full relation Structure tab and remaining relation information.
+- [x] Data-view refresh with visible loading and retry on failure.
+- [ ] Reliable connection-startup and secondary-metadata loading/error states.
 - [ ] Explicit copy cell, copy row, and full-value inspection actions.
 - [ ] Schema-qualified relation identity.
 - [ ] Active connection identity and lifecycle controls.
-- [ ] Lazy metadata loading.
+- [ ] Lazy loading for other metadata (indexes, roles, privileges).
 - [ ] Server-side filtering. **Deferred until the query/filter model is designed deliberately.**
 
 Completed reader work is covered by backend unit tests, frontend unit tests, and live PostgreSQL integration tests using the project test database. The sorting implementation uses native PostgreSQL ordering where supported, explicit null placement, deterministic primary-key tie-breakers, and a safe text fallback for types without native ordering.
@@ -199,7 +201,7 @@ Views can additionally expose **Definition**, and partitioned tables can expose 
 
 #### Feature brief — Column information drawer
 
-**Status:** Planned — next read-only implementation slice.
+**Status:** Implemented — contextual column drawer; the full relation Structure tab remains planned.
 
 **Product outcome:** A user can understand what a column means and how PostgreSQL defines it without leaving the data they are reading, opening another tool, or writing catalog SQL.
 
@@ -348,7 +350,7 @@ The main table surface should support:
 - Server-side filtering.
 - Server-side sorting across the complete result. **Resolved**
 - Natural text selection and keyboard copying. **Resolved**
-- Explicit refresh.
+- Explicit refresh. **Resolved for the Data view, with loading and retry.**
 - Copy cell.
 - Copy row.
 - Full-value inspection for truncated values.
@@ -434,7 +436,7 @@ The current FK drawer is a strong start. A complete relationship workflow should
 
 ### 10. Some product areas are overbuilt relative to the core
 
-Themes, role details, custom window chrome, and editor-like empty tabs have received considerable attention while refresh, filtering, copying, and relation structure are still absent.
+Themes, role details, custom window chrome, and editor-like empty tabs have received considerable attention while filtering, explicit copy actions, and a full relation Structure tab are still absent.
 
 The existing themes are worth keeping, but additional visual expansion should pause until the core reading experience is excellent.
 
@@ -527,22 +529,25 @@ The global Indexes page can remain as an overview, but each index should link ba
 1. [x] Deterministic PostgreSQL ordering and pagination.
 2. [x] Server-side sorting across the complete result.
 3. [ ] Server-side filtering. **Deferred pending query-model design**
-4. [ ] Refresh and reliable loading/error states.
-5. [ ] Copy cell, copy row, and full-value inspection.
-6. [ ] Schema-qualified relation identity.
-7. [ ] Active connection identity and lifecycle controls.
-8. [ ] Lazy metadata loading.
+4. [x] Data-view refresh, visible loading, and retry on failure.
+5. [ ] Reliable connection-startup and secondary-metadata loading/error states.
+6. [ ] Copy cell, copy row, and full-value inspection.
+7. [ ] Schema-qualified relation identity.
+8. [ ] Active connection identity and lifecycle controls.
+9. [x] Lazy, relation-scoped column information.
+10. [ ] Lazy loading for remaining metadata.
 
 ### P1 — Understand database objects
 
-1. [ ] Relation structure and types. **Next read-only slice**
-2. Complete constraints.
-3. Full index definitions.
-4. Enhanced forward and reverse relationship navigation.
-5. Views and materialized-view definitions.
-6. Triggers and partitions.
-7. Relation sizes and row estimates.
-8. Quick-open and scalable schema navigation.
+1. [x] Contextual column information drawer with relation-scoped types and constraints.
+2. [ ] Full relation Structure tab and remaining relation information.
+3. Complete constraints (including exclusion constraints).
+4. Full index definitions.
+5. Enhanced forward and reverse relationship navigation.
+6. Views and materialized-view definitions.
+7. Triggers and partitions.
+8. Relation sizes and row estimates.
+9. Quick-open and scalable schema navigation.
 
 ### P2 — Live diagnostics within Reader Mode
 

@@ -15,6 +15,22 @@ use crate::types::{
 
 const PAGE_SIZE: i64 = 100;
 
+fn page_request_args(
+    name: &str,
+    schema: &str,
+    page: usize,
+    sort: Option<&SortSpec>,
+) -> serde_json::Value {
+    serde_json::json!({
+        "tableName": name,
+        "schema": schema,
+        "limit": PAGE_SIZE,
+        "offset": (page as i64) * PAGE_SIZE,
+        "sortColumn": sort.map(|sort| sort.column.as_str()),
+        "sortDirection": sort.map(|sort| sort.direction),
+    })
+}
+
 /// Fetch a page of table data from the Tauri backend.
 fn fetch_page(
     name: &str,
@@ -34,18 +50,9 @@ fn fetch_page(
     error.set(None);
 
     spawn_local(async move {
-        let sort_column = sort.as_ref().map(|sort| sort.column.as_str());
-        let sort_direction = sort.as_ref().map(|sort| sort.direction);
         match tauri::invoke::<TableData>(
             "get_table_data",
-            &serde_json::json!({
-                "tableName": name,
-                "schema": schema,
-                "limit": PAGE_SIZE,
-                "offset": (page as i64) * PAGE_SIZE,
-                "sortColumn": sort_column,
-                "sortDirection": sort_direction,
-            }),
+            &page_request_args(&name, &schema, page, sort.as_ref()),
         )
         .await
         {
@@ -554,26 +561,50 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
         );
     });
 
-    let display_name = name.clone();
+    let name_refresh = name.clone();
+    let schema_refresh = schema.clone();
+    let refresh_page = Callback::new(move |_| {
+        fetch_page(
+            &name_refresh,
+            &schema_refresh,
+            page.get_untracked(),
+            sort.get_untracked(),
+            data,
+            request_id,
+            is_loading,
+            error,
+        );
+    });
 
     view! {
         <div class="table-page">
-            {move || {
-                if is_loading.get() && data.get().is_none() {
-                    Some(view! {
-                        <div class="table-page-loading">
-                            {icons::icon_spinner(20)}
-                            <span>"Loading data…"</span>
-                        </div>
-                    })
-                } else {
-                    None
-                }
-            }}
-
+            <div class="table-page-header">
+                <div class="table-page-heading">
+                    <h2 class="table-page-title">{name.clone()}</h2>
+                    <span class="text-muted text-sm">
+                        {move || data.get().map(|result| {
+                            if result.rows.is_empty() {
+                                format!("Empty table • {} columns", result.columns.len())
+                            } else {
+                                format!("{} total rows", result.total_rows)
+                            }
+                        })}
+                    </span>
+                </div>
+                <button
+                    class="btn btn-ghost btn-sm table-page-refresh"
+                    type="button"
+                    title=move || if is_loading.get() { "Loading data" } else if error.get().is_some() { "Retry loading data" } else { "Refresh data" }
+                    aria-label=move || if is_loading.get() { "Loading data" } else if error.get().is_some() { "Retry loading data" } else { "Refresh data" }
+                    disabled=move || is_loading.get()
+                    on:click=move |_| refresh_page.run(())
+                >
+                    {icons::icon_refresh(16, is_loading)}
+                </button>
+            </div>
             {move || {
                 error.get().map(|msg| view! {
-                    <div class="table-page-error">
+                    <div class="table-page-error" role="alert">
                         <p>{msg}</p>
                     </div>
                 })
@@ -591,17 +622,6 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                 let showing_to = ((p as i64 + 1) * PAGE_SIZE).min(total);
 
                 Some(view! {
-                    <div class="table-page-header">
-                        <h2 class="table-page-title">{display_name.clone()}</h2>
-                        <span class="text-muted text-sm">
-                            {if is_empty {
-                                format!("Empty table • {} columns", cols.len())
-                            } else {
-                                format!("{total} total rows")
-                            }}
-                        </span>
-                    </div>
-
                     <div class="table-page-body">
                         <DataTable
                             columns=cols
@@ -723,5 +743,41 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                 )}
             </Drawer>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::SortDirection;
+
+    #[test]
+    fn page_request_keeps_relation_page_and_sort() {
+        let sort = SortSpec {
+            column: "MiXeD Name".to_string(),
+            direction: SortDirection::Desc,
+        };
+        assert_eq!(
+            page_request_args("Orders", "archive", 2, Some(&sort)),
+            serde_json::json!({
+                "tableName": "Orders",
+                "schema": "archive",
+                "limit": 100,
+                "offset": 200,
+                "sortColumn": "MiXeD Name",
+                "sortDirection": "desc",
+            })
+        );
+        assert_eq!(
+            page_request_args("Orders", "public", 0, None),
+            serde_json::json!({
+                "tableName": "Orders",
+                "schema": "public",
+                "limit": 100,
+                "offset": 0,
+                "sortColumn": null,
+                "sortDirection": null,
+            })
+        );
     }
 }

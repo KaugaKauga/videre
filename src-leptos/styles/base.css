@@ -992,10 +992,28 @@ kbd {
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border);
 }
+.table-page-heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    min-width: 0;
+}
+.table-page-refresh {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+}
+.table-page-refresh svg {
+    flex-shrink: 0;
+}
+.table-page-refresh:disabled {
+    opacity: 1;
+}
 .table-page-title {
     font-size: 1.25rem;
     font-weight: 600;
-    text-transform: capitalize;
 }
 .table-page-body {
     flex: 1;

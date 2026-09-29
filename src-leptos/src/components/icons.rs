@@ -1,7 +1,4 @@
-//! Shared SVG icon functions to reduce duplication across components.
-//!
-//! Only icons that appear in **multiple files** are extracted here.
-//! Single-use icons remain inline in their respective components.
+//! SVG icons used by the UI components.
 
 use leptos::prelude::*;
 
@@ -42,6 +39,37 @@ pub fn icon_spinner(size: u32) -> impl IntoView {
             <path d="M7.75 16.25l-2.15 2.15"/>
             <path d="M6 12l-3 0"/>
             <path d="M7.75 7.75l-2.15 -2.15"/>
+        </svg>
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Refresh (Lucide refresh-cw) — table page
+// ---------------------------------------------------------------------------
+// Source: https://github.com/lucide-icons/lucide/blob/main/icons/refresh-cw.svg
+// ISC License — Copyright (c) 2026 Lucide Icons and Contributors.
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted, provided that the above
+// copyright notice and this permission notice appear in all copies.
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+// ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+pub fn icon_refresh(size: u32, loading: RwSignal<bool>) -> impl IntoView {
+    view! {
+        <svg class=move || if loading.get() { "animate-spin" } else { "" }
+             aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+             width=size height=size viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            <path d="M8 16H3v5"/>
         </svg>
     }
 }
