@@ -673,6 +673,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                 open=panel_open
                 title=panel_title
                 subtitle="Referenced row details"
+                wide=true
                 close_on_escape=false
             >
                 {move || {
