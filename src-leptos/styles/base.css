@@ -343,8 +343,12 @@ small,
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.sidebar-menu-button:hover {
+.sidebar-menu-button:hover,
+.sidebar-menu-button:focus-visible {
     background: oklch(from var(--sidebar-foreground) l c h / 0.08);
+}
+.sidebar-menu-button:focus-visible {
+    outline-offset: -2px;
 }
 .sidebar-menu-button svg {
     flex-shrink: 0;

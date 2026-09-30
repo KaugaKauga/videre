@@ -1,7 +1,7 @@
 <h1 align="center">Videre</h1>
 
 <p align="center">
-  A beautiful, simple, and security-focused PostgreSQL reader.
+  A beautiful, simple, and privacy-focused PostgreSQL reader.
 </p>
 
 <p align="center">
@@ -14,20 +14,6 @@
 Sometimes you just need to quickly connect to a database and understand its data. Videre is designed for exactly that — a lightweight tool for inspecting PostgreSQL without the clutter and complexity of a traditional database client.
 
 The initial and primary goal is to make the best possible read-only experience. Editing will come later as an explicit, opt-in capability without replacing the simplicity of the reader.
-
-### Product Direction
-
-#### Phase 1 — Reader Mode
-
-Reader Mode is the current and primary focus. It provides a beautiful, simple, and secure environment for browsing data, understanding database structure, and following relationships without exposing mutation controls.
-
-Read-only is a first-class product mode, not a temporary limitation. It will remain the default even after editing is introduced.
-
-#### Phase 2 — Edit Mode
-
-Once Reader Mode is "finished", Videre will add an explicit Edit Mode for inserting, updating, and deleting data. Editing will be clearly indicated and deliberately enabled, while Reader Mode remains available for users who only want to inspect a database.
-
-Videre remains a database inspector in both modes: Reader Mode is for understanding, and Edit Mode adds controlled mutation capabilities.
 
 ### Simple
 
@@ -56,6 +42,24 @@ Videre currently operates in **Reader Mode** — a read-only experience for brow
 - **Roles** — See database roles and permissions
 - **Foreign keys** — Understand table relationships
 - **Views** — Inspect view data
+
+### Product Direction
+
+#### Phase 1 — Reader Mode
+
+Reader Mode is the current and primary focus. It provides a beautiful, simple, and secure environment for browsing data, understanding database structure, and following relationships without exposing mutation controls.
+
+Read-only is a first-class product mode, not a temporary limitation. It will remain the default even after editing is introduced.
+
+#### Phase 2 — Edit Mode
+
+Once Reader Mode is "finished", Videre will add an explicit Edit Mode for inserting, updating, and deleting data. Editing will be clearly indicated and deliberately enabled, while Reader Mode remains available for users who only want to inspect a database.
+
+Videre remains a database inspector in both modes: Reader Mode is for understanding, and Edit Mode adds controlled mutation capabilities.
+
+## Software philosophy
+
+This project is an exploration of what the product can end up like while heavily relying on curated AI usage. Both in terms of product (roadmap and review) as well as code implementation.
 
 ---
 

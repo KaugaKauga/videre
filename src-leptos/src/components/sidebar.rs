@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::PointerEvent;
+use web_sys::{HtmlButtonElement, KeyboardEvent, PointerEvent};
 
 use crate::components::icons;
 use crate::stores::db_store::DbStore;
@@ -11,6 +11,28 @@ use crate::theme;
 pub fn Sidebar() -> impl IntoView {
     let db = use_context::<DbStore>().expect("DbStore not provided");
     let tab_store = use_context::<TabStore>().expect("TabStore not provided");
+    // Roving tabindex: only the last focused item is a Tab stop.
+    let focused_index = RwSignal::new(0usize);
+    let table_count = move || {
+        if db.is_loading.get() {
+            0
+        } else {
+            db.tables.with(Vec::len)
+        }
+    };
+    // Clamp so a metadata refresh that shortens the table list keeps one Tab stop.
+    let tab_stop = StoredValue::new(Selector::new(move || {
+        focused_index
+            .get()
+            .min(table_count() + FIXED_SIDEBAR_ITEMS - 1)
+    }));
+    let item_tabindex = move |index| {
+        if tab_stop.with_value(|stop| stop.selected(index)) {
+            0
+        } else {
+            -1
+        }
+    };
 
     let on_indexes_click = move |_| {
         tab_store.open_singleton_tab(TabType::Indexes, "Indexes");
@@ -79,7 +101,10 @@ pub fn Sidebar() -> impl IntoView {
     };
 
     view! {
-        <aside class="sidebar" style=sidebar_style>
+        <aside class="sidebar" style=sidebar_style
+            aria-label="Database navigation"
+            on:keydown=on_sidebar_keydown
+        >
             // Header
             <div class="sidebar-header">
                 {icons::icon_database(20)}
@@ -107,13 +132,15 @@ pub fn Sidebar() -> impl IntoView {
                                     <div class="sidebar-empty">"No tables found"</div>
                                 }.into_any()
                             } else {
-                                let items: Vec<_> = tables.iter().map(|table| {
+                                let items: Vec<_> = tables.iter().enumerate().map(|(index, table)| {
                                     let name = table.name.clone();
                                     let schema = table.schema.clone();
                                     let display = table.name.clone();
                                     let tooltip = format!("{}.{}", table.schema, table.name);
                                     view! {
                                         <button class="sidebar-menu-button"
+                                            tabindex=move || item_tabindex(index)
+                                            on:focus=move |_| focused_index.set(index)
                                             title=tooltip
                                             on:click=move |_| {
                                                 tab_store.open_table_tab(name.clone(), schema.clone());
@@ -140,11 +167,19 @@ pub fn Sidebar() -> impl IntoView {
                 // Bottom section: Indexes + Roles
                 <div class="sidebar-bottom-section">
                     <nav class="sidebar-menu">
-                        <button class="sidebar-menu-button" on:click=on_indexes_click>
+                        <button class="sidebar-menu-button"
+                            tabindex=move || item_tabindex(table_count())
+                            on:focus=move |_| focused_index.set(table_count())
+                            on:click=on_indexes_click
+                        >
                             {icons::icon_list(16)}
                             <span>"Indexes"</span>
                         </button>
-                        <button class="sidebar-menu-button" on:click=on_roles_click>
+                        <button class="sidebar-menu-button"
+                            tabindex=move || item_tabindex(table_count() + 1)
+                            on:focus=move |_| focused_index.set(table_count() + 1)
+                            on:click=on_roles_click
+                        >
                             {icons::icon_users(16)}
                             <span>"Roles"</span>
                         </button>
@@ -155,7 +190,11 @@ pub fn Sidebar() -> impl IntoView {
             // Footer: Connection + Settings
             <div class="sidebar-footer">
                 <nav class="sidebar-menu">
-                    <button class="sidebar-menu-button" on:click=on_connection_click>
+                    <button class="sidebar-menu-button"
+                        tabindex=move || item_tabindex(table_count() + 2)
+                        on:focus=move |_| focused_index.set(table_count() + 2)
+                        on:click=on_connection_click
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                              viewBox="0 0 24 24" fill="none" stroke="currentColor"
                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -166,7 +205,11 @@ pub fn Sidebar() -> impl IntoView {
                         </svg>
                         <span>"Connection"</span>
                     </button>
-                    <button class="sidebar-menu-button" on:click=on_settings_click>
+                    <button class="sidebar-menu-button"
+                        tabindex=move || item_tabindex(table_count() + 3)
+                        on:focus=move |_| focused_index.set(table_count() + 3)
+                        on:click=on_settings_click
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                              viewBox="0 0 24 24" fill="none" stroke="currentColor"
                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -190,5 +233,124 @@ pub fn Sidebar() -> impl IntoView {
                 on:pointercancel=on_handle_up
             />
         </aside>
+    }
+}
+
+/// Indexes, Roles, Connection and Settings, which follow the tables.
+const FIXED_SIDEBAR_ITEMS: usize = 4;
+
+fn sidebar_buttons(sidebar: &web_sys::Element) -> Vec<HtmlButtonElement> {
+    let Ok(nodes) = sidebar.query_selector_all(".sidebar-menu-button") else {
+        return Vec::new();
+    };
+    (0..nodes.length())
+        .filter_map(|index| nodes.item(index)?.dyn_into::<HtmlButtonElement>().ok())
+        .collect()
+}
+
+pub(super) fn focus_sidebar() {
+    let Some(document) = web_sys::window().and_then(|window| window.document()) else {
+        return;
+    };
+    let Ok(Some(sidebar)) = document.query_selector(".sidebar") else {
+        return;
+    };
+    let buttons = sidebar_buttons(&sidebar);
+    if let Some(button) = buttons
+        .iter()
+        .find(|button| button.tab_index() == 0)
+        .or_else(|| buttons.first())
+    {
+        let _ = button.focus();
+    }
+}
+
+fn on_sidebar_keydown(event: KeyboardEvent) {
+    if event.default_prevented()
+        || event.is_composing()
+        || event.meta_key()
+        || event.ctrl_key()
+        || event.alt_key()
+        || event.shift_key()
+    {
+        return;
+    }
+    let Some(sidebar) = event
+        .current_target()
+        .and_then(|target| target.dyn_into::<web_sys::Element>().ok())
+    else {
+        return;
+    };
+    let Some(target) = event
+        .target()
+        .and_then(|target| target.dyn_into::<HtmlButtonElement>().ok())
+    else {
+        return;
+    };
+    let buttons = sidebar_buttons(&sidebar);
+    let Some(current) = buttons
+        .iter()
+        .position(|button| button.is_same_node(Some(&target)))
+    else {
+        return;
+    };
+    if let Some(index) = sidebar_navigation_index(&event.key(), current, buttons.len()) {
+        event.prevent_default();
+        let _ = buttons[index].focus();
+    }
+}
+
+fn sidebar_navigation_index(key: &str, current: usize, count: usize) -> Option<usize> {
+    match key {
+        "ArrowDown" | "j" => Some((current + 1).min(count - 1)),
+        "ArrowUp" | "k" => Some(current.saturating_sub(1)),
+        "Home" => Some(0),
+        "End" => Some(count - 1),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sidebar_navigation_index;
+
+    #[test]
+    fn arrows_and_vim_keys_move_between_sidebar_items() {
+        for key in ["ArrowDown", "j"] {
+            assert_eq!(sidebar_navigation_index(key, 1, 6), Some(2));
+        }
+        for key in ["ArrowUp", "k"] {
+            assert_eq!(sidebar_navigation_index(key, 2, 6), Some(1));
+        }
+    }
+
+    #[test]
+    fn movement_stops_at_the_first_and_last_items() {
+        for key in ["ArrowUp", "k"] {
+            assert_eq!(sidebar_navigation_index(key, 0, 6), Some(0));
+        }
+        for key in ["ArrowDown", "j"] {
+            assert_eq!(sidebar_navigation_index(key, 5, 6), Some(5));
+        }
+    }
+
+    #[test]
+    fn home_and_end_jump_to_sidebar_boundaries() {
+        assert_eq!(sidebar_navigation_index("Home", 2, 6), Some(0));
+        assert_eq!(sidebar_navigation_index("End", 2, 6), Some(5));
+    }
+
+    #[test]
+    fn a_single_item_keeps_focus() {
+        for key in ["j", "k", "Home", "End"] {
+            assert_eq!(sidebar_navigation_index(key, 0, 1), Some(0));
+        }
+    }
+
+    #[test]
+    fn activation_and_other_keys_keep_their_native_behavior() {
+        for key in ["Enter", " ", "Tab", "Escape", "c", "J", "K"] {
+            assert_eq!(sidebar_navigation_index(key, 1, 6), None);
+        }
     }
 }

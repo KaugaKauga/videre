@@ -153,6 +153,22 @@ cd src-leptos && trunk serve # Serve WASM frontend at localhost:1420
 | `Cmd/Ctrl + T` | Create new empty tab |
 | `Cmd/Ctrl + W` | Close active tab |
 | `Cmd/Ctrl + 1-9` | Switch to tab by number |
+| `Ctrl + Tab` | Next tab (macOS and Windows) |
+| `Ctrl + Shift + Tab` | Previous tab (macOS and Windows) |
+| `Cmd + Option + →` / `←` | Next / previous tab (macOS) |
+| `Cmd/Ctrl + Shift + E` | Focus the sidebar (last focused item, or the first item) |
+| `↑` / `↓` or `k` / `j` | Move between sidebar items while the sidebar is focused |
+| `Home` / `End` | Focus the first / last sidebar item |
+| `Enter` / `Space` | Open the focused sidebar item |
+| `Tab` / `Shift + Tab` | Enter or leave the sidebar as a single Tab stop |
+
+Tab cycling follows the visible tab order and wraps at either end. On macOS,
+`Ctrl + Tab` uses Control, not Command; `Cmd + Tab` remains the system app switcher.
+Plain `Tab` / `Shift + Tab` and text-navigation shortcuts are not intercepted.
+
+Sidebar movement changes focus without opening tabs. Navigation includes tables,
+Indexes, Roles, Connection, and Settings. Letter and arrow navigation is scoped to
+sidebar buttons; typing in forms and interacting with table data are unaffected.
 
 ## Theming
 

@@ -210,11 +210,118 @@ impl TabStore {
         self.active_tab_id.set(Some(tab_id.to_string()));
     }
 
+    /// Activate the next tab in visible order, wrapping to the first.
+    pub fn next_tab(&self) {
+        self.cycle_tab(false);
+    }
+
+    /// Activate the previous tab in visible order, wrapping to the last.
+    pub fn previous_tab(&self) {
+        self.cycle_tab(true);
+    }
+
+    fn cycle_tab(&self, backwards: bool) {
+        let tabs = self.tabs.get_untracked();
+        let active_id = self.active_tab_id.get_untracked();
+        if let Some(index) = adjacent_tab_index(&tabs, active_id.as_deref(), backwards) {
+            self.active_tab_id.set(Some(tabs[index].id.clone()));
+        }
+    }
+
     /// Switch to a tab by 0-based index (for Cmd/Ctrl + 1-9 shortcuts).
     pub fn switch_to_tab(&self, index: usize) {
         let tabs = self.tabs.get_untracked();
         if let Some(tab) = tabs.get(index) {
             self.active_tab_id.set(Some(tab.id.clone()));
         }
+    }
+}
+
+fn adjacent_tab_index(tabs: &[Tab], active_id: Option<&str>, backwards: bool) -> Option<usize> {
+    if tabs.is_empty() {
+        return None;
+    }
+    let current = active_id.and_then(|id| tabs.iter().position(|tab| tab.id == id));
+    Some(match (current, backwards) {
+        (Some(0) | None, true) => tabs.len() - 1,
+        (Some(index), true) => index - 1,
+        (Some(index), false) => (index + 1) % tabs.len(),
+        (None, false) => 0,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{adjacent_tab_index, Tab, TabStore, TabType};
+    use leptos::prelude::*;
+
+    fn tabs() -> Vec<Tab> {
+        ["first", "second", "third"]
+            .into_iter()
+            .map(|id| Tab {
+                id: id.into(),
+                label: id.into(),
+                tab_type: TabType::Empty,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn cycles_in_visible_order_and_wraps_in_both_directions() {
+        let tabs = tabs();
+        for (index, tab) in tabs.iter().enumerate() {
+            assert_eq!(
+                adjacent_tab_index(&tabs, Some(&tab.id), false),
+                Some((index + 1) % tabs.len()),
+            );
+            assert_eq!(
+                adjacent_tab_index(&tabs, Some(&tab.id), true),
+                Some((index + tabs.len() - 1) % tabs.len()),
+            );
+        }
+    }
+
+    #[test]
+    fn no_tabs_is_a_noop_and_one_tab_stays_selected() {
+        for backwards in [false, true] {
+            assert_eq!(adjacent_tab_index(&[], None, backwards), None);
+            assert_eq!(
+                adjacent_tab_index(&tabs()[..1], Some("first"), backwards),
+                Some(0),
+            );
+        }
+    }
+
+    #[test]
+    fn missing_or_stale_active_tab_selects_the_directional_boundary() {
+        for active in [None, Some("closed")] {
+            assert_eq!(adjacent_tab_index(&tabs(), active, false), Some(0));
+            assert_eq!(adjacent_tab_index(&tabs(), active, true), Some(2));
+        }
+    }
+
+    #[test]
+    fn cycling_updates_the_store_and_skips_closed_tabs() {
+        Owner::new().with(|| {
+            let store = TabStore::init();
+            store.tabs.set(tabs());
+            store.set_active("first");
+            store.next_tab();
+            assert_eq!(
+                store.active_tab_id.get_untracked().as_deref(),
+                Some("second")
+            );
+            store.close_tab("second");
+            store.previous_tab();
+            assert_eq!(
+                store.active_tab_id.get_untracked().as_deref(),
+                Some("first")
+            );
+            store.previous_tab();
+            assert_eq!(
+                store.active_tab_id.get_untracked().as_deref(),
+                Some("third")
+            );
+        });
     }
 }
