@@ -1,8 +1,13 @@
-use leptos::{ev, leptos_dom::helpers::window_event_listener, prelude::*};
+use leptos::{
+    ev, html,
+    leptos_dom::helpers::{request_animation_frame, window_event_listener},
+    prelude::*,
+};
 
 /// Reusable slide-out side panel with a backdrop.
 ///
 /// - Clicking the backdrop or the ✕ button closes the panel.
+/// - Opening moves focus to the ✕ button; `on_close` decides where it returns.
 /// - `title` is reactive so the parent can update it dynamically.
 /// - Pass arbitrary body content as children.
 ///
@@ -43,6 +48,25 @@ pub fn Drawer(
         }
     });
 
+    let close_button = NodeRef::<html::Button>::new();
+    Effect::new(move |_| {
+        if open.get() {
+            // Wait a frame so the panel is no longer `inert` when focused.
+            request_animation_frame(move || {
+                if open.try_get_untracked().unwrap_or(false) {
+                    if let Some(button) = close_button.try_get_untracked().flatten() {
+                        // The panel is still sliding in from off-canvas. A scrolling
+                        // focus would shift the overflow-hidden page sideways and
+                        // expose sibling drawers parked off-screen.
+                        let options = web_sys::FocusOptions::new();
+                        options.set_prevent_scroll(true);
+                        let _ = button.focus_with_options(&options);
+                    }
+                }
+            });
+        }
+    });
+
     if close_on_escape {
         let escape_close = close;
         let keydown = window_event_listener(ev::keydown, move |event| {
@@ -59,15 +83,18 @@ pub fn Drawer(
             class=move || if open.get() { "row-detail-backdrop open" } else { "row-detail-backdrop" }
             on:click=move |_| close.run(())
         />
-        <div class=move || match (open.get(), wide) {
-            (true, true) => "row-detail-panel wide open",
-            (true, false) => "row-detail-panel open",
-            (false, true) => "row-detail-panel wide",
-            (false, false) => "row-detail-panel",
-        }>
+        <div
+            class=move || match (open.get(), wide) {
+                (true, true) => "row-detail-panel wide open",
+                (true, false) => "row-detail-panel open",
+                (false, true) => "row-detail-panel wide",
+                (false, false) => "row-detail-panel",
+            }
+            inert=move || !open.get()
+        >
             <div class="row-detail-header">
                 <h3>{move || title.get()}</h3>
-                <button class="btn btn-ghost btn-sm" type="button" aria-label="Close drawer" on:click=move |_| close.run(())>
+                <button class="btn btn-ghost btn-sm" type="button" aria-label="Close drawer" node_ref=close_button on:click=move |_| close.run(())>
                     "\u{2715}"
                 </button>
             </div>

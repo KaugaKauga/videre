@@ -160,7 +160,12 @@ cd src-leptos && trunk serve # Serve WASM frontend at localhost:1420
 | `↑` / `↓` or `k` / `j` | Move between sidebar items while the sidebar is focused |
 | `Home` / `End` | Focus the first / last sidebar item |
 | `Enter` / `Space` | Open the focused sidebar item |
-| `Tab` / `Shift + Tab` | Enter or leave the sidebar as a single Tab stop |
+| `Tab` / `Shift + Tab` | Enter or leave the sidebar or table body as a single Tab stop |
+| `←` / `→` / `↑` / `↓` | Move between data cells while a table cell is focused |
+| `j` / `k` | Move down / up through data cells |
+| `Cmd + C` (macOS) / `Ctrl + C` (Windows) | Copy selected text, or the full focused cell value |
+| `Enter` on a foreign-key cell | Open referenced-row details |
+| `Escape` in referenced-row details | Close the drawer and return focus to the originating cell |
 
 Tab cycling follows the visible tab order and wraps at either end. On macOS,
 `Ctrl + Tab` uses Control, not Command; `Cmd + Tab` remains the system app switcher.
@@ -169,6 +174,19 @@ Plain `Tab` / `Shift + Tab` and text-navigation shortcuts are not intercepted.
 Sidebar movement changes focus without opening tabs. Navigation includes tables,
 Indexes, Roles, Connection, and Settings. Letter and arrow navigation is scoped to
 sidebar buttons; typing in forms and interacting with table data are unaffected.
+
+Table-cell movement stops at the current page boundaries and scrolls the focused
+cell into view; it never changes pages automatically. Header information controls
+remain separately reachable with Tab. Cell position is preserved and clamped when
+data reloads. Restoration only runs while the table owns focus; pagination and
+refresh requests alone do not move focus into a cell.
+Navigation and full-cell copy pause while data loads or a drawer is open.
+
+Copy uses the complete underlying value, not its visually truncated text. Selected
+text keeps normal native copy behavior. SQL NULL copies as `NULL`; an empty string
+copies as empty text. Moving to another cell with the keyboard clears the previous
+text selection. Clipboard access uses the native copy event, with no clipboard
+plugin or new package.
 
 ## Theming
 

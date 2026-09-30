@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use leptos::task::spawn_local;
-use leptos::{ev, leptos_dom::helpers::window_event_listener, prelude::*};
+use leptos::{ev, html, leptos_dom::helpers::window_event_listener, prelude::*};
 use wasm_bindgen::JsCast;
 
-use crate::components::data_table::DataTable;
+use crate::components::data_table::{focus_cell, CellPosition, DataTable};
 use crate::components::drawer::Drawer;
 use crate::components::icons;
 use crate::stores::db_store::DbStore;
@@ -323,11 +323,11 @@ fn column_panel_content(
     column_details(structure, column)
 }
 
-fn focus_column_info_button(column_name: &str) {
-    let Some(document) = web_sys::window().and_then(|window| window.document()) else {
+fn focus_column_info_button(table_page: NodeRef<html::Div>, column_name: &str) {
+    let Some(root) = table_page.get_untracked() else {
         return;
     };
-    let Ok(buttons) = document.query_selector_all("[data-column-info-for]") else {
+    let Ok(buttons) = root.query_selector_all("[data-column-info-for]") else {
         return;
     };
 
@@ -393,6 +393,8 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
     let request_id = RwSignal::new(0_u64);
     let is_loading = RwSignal::new(true);
     let error: RwSignal<Option<String>> = RwSignal::new(None);
+    let active_cell: RwSignal<Option<CellPosition>> = RwSignal::new(None);
+    let table_page = NodeRef::<html::Div>::new();
 
     // ---- Drawer state ------------------------------------------------------
     let panel_open = RwSignal::new(false);
@@ -410,16 +412,32 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
     let column_request_id = RwSignal::new(0_u64);
     let column_info_opener: RwSignal<Option<String>> = RwSignal::new(None);
 
+    let keyboard_enabled =
+        Signal::derive(move || !is_loading.get() && !panel_open.get() && !column_drawer_open.get());
+
+    // Return focus to the cell that opened the drawer, like the column drawer does.
+    let close_fk_drawer = Callback::new(move |_| {
+        panel_open.set(false);
+        if let (Some(root), Some(position)) =
+            (table_page.get_untracked(), active_cell.get_untracked())
+        {
+            focus_cell(&root, position);
+        }
+    });
+
     let close_column_drawer = Callback::new(move |_| {
         column_drawer_open.set(false);
         column_info_opener.update(|opener| {
             if let Some(column_name) = opener.take() {
-                focus_column_info_button(&column_name);
+                if !panel_open.get_untracked() {
+                    focus_column_info_button(table_page, &column_name);
+                }
             }
         });
     });
 
     let escape_close_column_drawer = close_column_drawer;
+    let escape_close_fk_drawer = close_fk_drawer;
     let table_drawer_keydown = window_event_listener(ev::keydown, move |event| {
         if event.key() != "Escape" {
             return;
@@ -429,7 +447,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
             escape_close_column_drawer.run(());
         } else if panel_open.get_untracked() {
             event.prevent_default();
-            panel_open.set(false);
+            escape_close_fk_drawer.run(());
         }
     });
     on_cleanup(move || table_drawer_keydown.remove());
@@ -449,10 +467,11 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
 
     // ---- Drawer mode transitions -------------------------------------------
     let fk_click_effect = fk_click;
-    let close_column_drawer_for_fk = close_column_drawer;
     Effect::new(move |_prev: Option<()>| {
         if let Some((ref fk, ref value)) = fk_click_effect.get() {
-            close_column_drawer_for_fk.run(());
+            // Mode transitions must not restore the previous drawer's opener.
+            column_drawer_open.set(false);
+            column_info_opener.set(None);
             panel_title.set(fk.foreign_table_name.clone());
             panel_open.set(true);
             fetch_fk_row(fk, value, panel_data, panel_loading, panel_error);
@@ -577,7 +596,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
     });
 
     view! {
-        <div class="table-page">
+        <div class="table-page" node_ref=table_page>
             <div class="table-page-header">
                 <div class="table-page-heading">
                     <h2 class="table-page-title">{name.clone()}</h2>
@@ -631,6 +650,8 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                             fk_columns=fk_map.clone()
                             fk_click=fk_click
                             column_info_click=on_column_info
+                            active_cell=active_cell
+                            keyboard_enabled=keyboard_enabled
                         />
                     </div>
 
@@ -675,6 +696,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                 subtitle="Referenced row details"
                 wide=true
                 close_on_escape=false
+                on_close=close_fk_drawer
             >
                 {move || {
                     if panel_loading.get() {

@@ -937,6 +937,14 @@ kbd {
     user-select: text;
     -webkit-user-select: text;
 }
+.data-table-td {
+    scroll-margin-block-start: 2.5rem;
+}
+.data-table-td:focus-within {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+    background: oklch(from var(--primary) l c h / 0.1);
+}
 .data-table-td * {
     user-select: text;
     -webkit-user-select: text;
