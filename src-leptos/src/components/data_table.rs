@@ -406,6 +406,9 @@ pub fn DataTable(
     keyboard_enabled: Signal<bool>,
     sort: RwSignal<Option<SortSpec>>,
     on_sort: Callback<Option<SortSpec>>,
+    /// Arbitrary SQL results keep the ordering expressed by the query itself.
+    #[prop(optional = true)]
+    sortable: bool,
     #[prop(optional)] fk_columns: Option<HashMap<String, ForeignKeyInfo>>,
     #[prop(optional)] fk_click: Option<RwSignal<Option<(ForeignKeyInfo, serde_json::Value)>>>,
     /// Receives the selected column name for the column-information drawer.
@@ -586,9 +589,12 @@ pub fn DataTable(
                                 view! {
                                     <th
                                         class="data-table-th"
+                                        class:unsortable=!sortable
                                         on:click=move |_| {
-                                            let current = sort.get_untracked();
-                                            on_sort.run(next_sort(current.as_ref(), &clicked_name));
+                                            if sortable {
+                                                let current = sort.get_untracked();
+                                                on_sort.run(next_sort(current.as_ref(), &clicked_name));
+                                            }
                                         }
                                     >
                                         <span class="data-table-th-inner">
@@ -601,6 +607,9 @@ pub fn DataTable(
                                                 None
                                             }}
                                             {move || {
+                                                if !sortable {
+                                                    return ().into_any();
+                                                }
                                                 let active_sort = sort.get();
                                                 if let Some(active) = active_sort
                                                     .filter(|active| active.column == indicator_name)
@@ -615,21 +624,21 @@ pub fn DataTable(
                                                     view! { <span class="sort-indicator sort-inactive">{"\u{25B2}"}</span> }.into_any()
                                                 }
                                             }}
-                                            <button
-                                                class="column-info-button"
-                                                type="button"
-                                                title=info_label.clone()
-                                                aria-label=info_label
-                                                data-column-info-for=info_column.clone()
-                                                on:click=move |ev: web_sys::MouseEvent| {
-                                                    ev.stop_propagation();
-                                                    if let Some(callback) = column_info_click {
+                                            {column_info_click.map(|callback| view! {
+                                                <button
+                                                    class="column-info-button"
+                                                    type="button"
+                                                    title=info_label.clone()
+                                                    aria-label=info_label
+                                                    data-column-info-for=info_column.clone()
+                                                    on:click=move |ev: web_sys::MouseEvent| {
+                                                        ev.stop_propagation();
                                                         callback.run(info_column.clone());
                                                     }
-                                                }
-                                            >
-                                                <span aria-hidden="true">"ⓘ"</span>
-                                            </button>
+                                                >
+                                                    <span aria-hidden="true">"ⓘ"</span>
+                                                </button>
+                                            })}
                                         </span>
                                     </th>
                                 }

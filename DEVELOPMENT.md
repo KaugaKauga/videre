@@ -151,6 +151,8 @@ cd src-leptos && trunk serve # Serve WASM frontend at localhost:1420
 | Shortcut | Action |
 |----------|--------|
 | `Cmd/Ctrl + T` | Create new empty tab |
+| `Cmd/Ctrl + N` | Create a new SQL query tab |
+| `Cmd/Ctrl + Enter` | Run the entire SQL draft in the focused query workspace |
 | `Cmd/Ctrl + W` | Close active tab |
 | `Cmd/Ctrl + 1-9` | Switch to tab by number |
 | `Ctrl + Tab` | Next tab (macOS and Windows) |
@@ -172,7 +174,7 @@ Tab cycling follows the visible tab order and wraps at either end. On macOS,
 Plain `Tab` / `Shift + Tab` and text-navigation shortcuts are not intercepted.
 
 Sidebar movement changes focus without opening tabs. Navigation includes tables,
-Indexes, Roles, Connection, and Settings. Letter and arrow navigation is scoped to
+New query, Indexes, Roles, Connection, and Settings. Letter and arrow navigation is scoped to
 sidebar buttons; typing in forms and interacting with table data are unaffected.
 
 Table-cell movement stops at the current page boundaries and scrolls the focused
@@ -187,6 +189,49 @@ text keeps normal native copy behavior. SQL NULL copies as `NULL`; an empty stri
 copies as empty text. Moving to another cell with the keyboard clears the previous
 text selection. Clipboard access uses the native copy event, with no clipboard
 plugin or new package.
+
+## Read-only SQL Workspace
+
+Open **New query** from the sidebar or an empty tab, or use `Cmd/Ctrl + N`.
+Write one `SELECT`, `WITH`, or `VALUES` statement and run it with **Run** or
+`Cmd/Ctrl + Enter`. Query drafts, results, and running executions survive tab
+switches for the current application session; closing a query tab requests
+cancellation. Drafts are not saved to disk or preserved across app restarts.
+
+Results show their execution connection, elapsed time, returned row count, and
+an explicit warning when the 1,000-row preview is truncated. Result columns and
+ordering come directly from SQL: there is no automatic sorting, pagination,
+foreign-key inference, or column-structure lookup for arbitrary query output.
+The table's cell navigation and copying remain available. **Cancel** interrupts
+execution, and syntax/database errors leave the SQL draft intact.
+
+### Execution boundaries
+
+- Each execution uses a fresh connection with the active connection credentials;
+  credentials remain in backend memory, not in query result metadata.
+- PostgreSQL executes the query inside a **READ ONLY** transaction that is always
+  rolled back. User SQL is validated as one statement through the extended
+  protocol, never executed as an unrestricted multi-statement script.
+- Parameters, mutation statements, transaction-control commands, and
+  cursor-incompatible commands such as `EXPLAIN` and `SHOW` are not supported in
+  this first iteration.
+- Limits: four concurrent executions, 1 MiB SQL, 1,000 preview rows, 1 MiB per
+  returned row, 8 MiB retained preview payload, and 1,024 columns. Queries have a
+  30-second statement timeout, 5-second lock timeout, and 40-second wall deadline.
+- Preview fetches use small batches. Payload checks occur after driver decoding,
+  so an exceptionally large individual row can still allocate memory before
+  rejection; these limits are not an absolute process-memory guarantee.
+- Read-only execution prevents persistent database writes, but is **not a full
+  SQL sandbox**. Privileged functions may have external side effects. Use a
+  least-privilege PostgreSQL account, especially for untrusted SQL.
+
+Backend query tests:
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml --lib pg::query::tests
+# Requires the project's PostgreSQL test fixture:
+cargo test --manifest-path src-tauri/Cargo.toml --lib pg::query::tests::live -- --ignored
+```
 
 ## Theming
 

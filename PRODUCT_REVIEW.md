@@ -2,11 +2,11 @@
 
 _Date: August 2026_
 
-_Last progress update: September 10, 2026_
+_Last progress update: October 6, 2026_
 
 ## Delivery progress
 
-Current focus: **Reader interactions and relation structure**
+Current focus: **Reader interactions and read-only SQL querying**
 
 - [x] Deterministic PostgreSQL ordering and pagination.
 - [x] Server-side sorting across the complete relation.
@@ -19,7 +19,8 @@ Current focus: **Reader interactions and relation structure**
 - [ ] Schema-qualified relation identity.
 - [ ] Active connection identity and lifecycle controls.
 - [ ] Lazy loading for other metadata (indexes, roles, privileges).
-- [ ] Server-side filtering. **Deferred until the query/filter model is designed deliberately.**
+- [x] Focused read-only SQL tabs with independent drafts, keyboard execution, cancellation, and bounded result previews.
+- [ ] Table-filter UI. **Deferred in favor of complete SQL queries in Reader Mode.**
 
 Completed reader work is covered by backend unit tests, frontend unit tests, and live PostgreSQL integration tests using the project test database. The sorting implementation uses native PostgreSQL ordering where supported, explicit null placement, deterministic primary-key tie-breakers, and a safe text fallback for types without native ordering.
 
@@ -48,6 +49,7 @@ Reader Mode should let a user:
 - Understand relation structure, constraints, indexes, and relationships.
 - Follow relationships without writing SQL.
 - Inspect live PostgreSQL activity and health without modifying the database.
+- Answer focused questions with read-only SQL without requiring Edit Mode.
 
 The product can already be called a **database inspector** in this phase. Inspection usually means understanding data and structure; it does not require mutation capabilities.
 
@@ -528,7 +530,7 @@ The global Indexes page can remain as an overview, but each index should link ba
 
 1. [x] Deterministic PostgreSQL ordering and pagination.
 2. [x] Server-side sorting across the complete result.
-3. [ ] Server-side filtering. **Deferred pending query-model design**
+3. [x] Read-only SQL workspace for filtering, joins, grouping, and ordering; a separate table-filter UI remains deferred.
 4. [x] Data-view refresh, visible loading, and retry on failure.
 5. [ ] Reliable connection-startup and secondary-metadata loading/error states.
 6. [ ] Copy cell, copy row, and full-value inspection.
@@ -565,7 +567,7 @@ The global Indexes page can remain as an overview, but each index should link ba
 3. Update rows.
 4. Delete rows.
 5. Change previews and clear confirmations.
-6. A limited query workspace if it supports the focused product workflow.
+6. Any future mutation-capable SQL workflow must be explicitly gated by Edit Mode; read-only SQL querying already belongs to Reader Mode.
 
 ### P4 — Broader platform support
 

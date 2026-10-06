@@ -1,8 +1,11 @@
 use leptos::prelude::*;
 
+use crate::stores::tab_store::TabStore;
+
 /// Shown when no tabs are open at all.
 #[component]
 pub fn EmptyState() -> impl IntoView {
+    let tabs = use_context::<TabStore>().expect("TabStore not provided");
     view! {
         <div class="empty-state">
             <div class="empty-state-inner">
@@ -15,7 +18,8 @@ pub fn EmptyState() -> impl IntoView {
                     <path d="M4 12v6a8 3 0 0 0 16 0v-6"/>
                 </svg>
                 <h3>"No table selected"</h3>
-                <p>"Select a table from the sidebar to view its contents"</p>
+                <p>"Select a table from the sidebar, or write a read-only SQL query."</p>
+                <button class="btn btn-primary" on:click=move |_| tabs.open_query_tab()>"New query"</button>
             </div>
         </div>
     }
@@ -24,6 +28,7 @@ pub fn EmptyState() -> impl IntoView {
 /// Shown inside an empty/blank tab.
 #[component]
 pub fn EmptyTab() -> impl IntoView {
+    let tabs = use_context::<TabStore>().expect("TabStore not provided");
     view! {
         <div class="empty-state">
             <div class="empty-state-inner">
@@ -38,13 +43,18 @@ pub fn EmptyTab() -> impl IntoView {
                 </svg>
                 <h3>"Empty Tab"</h3>
                 <p class="empty-tab-desc">
-                    "This is an empty tab. Select a table from the sidebar to view its contents."
+                    "Select a table from the sidebar, or start a read-only SQL query."
                 </p>
+                <button class="btn btn-primary" on:click=move |_| tabs.open_query_tab()>"New query"</button>
                 <div class="shortcuts-box">
                     <p class="shortcuts-title">"Keyboard Shortcuts:"</p>
                     <div class="shortcut-row">
                         <span>"New tab"</span>
                         <kbd>{"\u{2318}/Ctrl + T"}</kbd>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>"New SQL query"</span>
+                        <kbd>{"\u{2318}/Ctrl + N"}</kbd>
                     </div>
                     <div class="shortcut-row">
                         <span>"Close tab"</span>

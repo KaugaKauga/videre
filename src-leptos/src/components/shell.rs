@@ -7,6 +7,7 @@ use crate::components::sidebar::{focus_sidebar, Sidebar};
 use crate::components::tab_bar::TabBar;
 use crate::pages::connection::ConnectionPage;
 use crate::pages::indexes::IndexesPage;
+use crate::pages::query::QueryPage;
 use crate::pages::roles::RolesPage;
 use crate::pages::settings::SettingsPage;
 use crate::pages::table::TablePage;
@@ -16,6 +17,7 @@ use crate::stores::tab_store::{TabStore, TabType};
 pub fn Shell() -> impl IntoView {
     let tab_store = TabStore::init();
     provide_context(tab_store);
+    on_cleanup(move || tab_store.close_queries());
 
     // ---- Keyboard shortcuts ------------------------------------------------
     setup_keyboard_shortcuts(tab_store);
@@ -35,6 +37,10 @@ pub fn Shell() -> impl IntoView {
                                 TabType::Empty => {
                                     view! { <EmptyTab /> }.into_any()
                                 }
+                                TabType::Query => match tab_store.query_session(&tab.id) {
+                                    Some(session) => view! { <QueryPage session=session /> }.into_any(),
+                                    None => view! { <EmptyTab /> }.into_any(),
+                                },
                                 TabType::Connection => {
                                     view! { <ConnectionPage /> }.into_any()
                                 }
@@ -88,6 +94,7 @@ fn setup_keyboard_shortcuts(tab_store: TabStore) {
         ev.prevent_default();
         match shortcut {
             ShellShortcut::OpenTab => tab_store.open_empty_tab(),
+            ShellShortcut::OpenQuery => tab_store.open_query_tab(),
             ShellShortcut::CloseTab => tab_store.close_active_tab(),
             ShellShortcut::SwitchToTab(index) => tab_store.switch_to_tab(index),
             ShellShortcut::NextTab => tab_store.next_tab(),
@@ -113,6 +120,7 @@ fn setup_keyboard_shortcuts(tab_store: TabStore) {
 #[derive(Debug, PartialEq)]
 enum ShellShortcut {
     OpenTab,
+    OpenQuery,
     CloseTab,
     SwitchToTab(usize),
     NextTab,
@@ -157,6 +165,7 @@ fn shell_shortcut(key: &str, modifiers: KeyboardModifiers, is_mac: bool) -> Opti
     match (key, shift) {
         ("e" | "E", true) => Some(ShellShortcut::FocusSidebar),
         ("t", false) => Some(ShellShortcut::OpenTab),
+        ("n", false) => Some(ShellShortcut::OpenQuery),
         ("w", false) => Some(ShellShortcut::CloseTab),
         (key, false) => key
             .parse::<usize>()
@@ -203,6 +212,10 @@ mod tests {
             assert_eq!(
                 shell_shortcut("t", modifiers, is_mac),
                 Some(ShellShortcut::OpenTab)
+            );
+            assert_eq!(
+                shell_shortcut("n", modifiers, is_mac),
+                Some(ShellShortcut::OpenQuery)
             );
             assert_eq!(
                 shell_shortcut("w", modifiers, is_mac),

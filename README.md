@@ -42,6 +42,7 @@ Videre currently operates in **Reader Mode** — a read-only experience for brow
 - **Roles** — See database roles and permissions
 - **Foreign keys** — Understand table relationships
 - **Views** — Inspect view data
+- **SQL queries** — Run read-only SELECT/WITH/VALUES queries in independent tabs with keyboard-navigable results
 
 ### Product Direction
 
@@ -120,6 +121,7 @@ cargo tauri dev         # Run the app
 ## Roadmap
 
 **Phase 1 — Reader Mode**
+- [x] Focused read-only SQL workspace with cancellation and bounded result previews
 - [ ] Trustworthy server-side sorting, filtering, and pagination
 - [ ] Copy cells and rows, inspect full values, and export CSV/JSON
 - [ ] Inspect columns, types, constraints, indexes, and relationships
@@ -132,7 +134,7 @@ cargo tauri dev         # Run the app
 - [ ] Update rows
 - [ ] Delete rows
 - [ ] Clear previews and confirmations for mutations
-- [ ] Focused query workspace
+
 
 **Future database support**
 - [ ] Evaluate MySQL and SQLite after the PostgreSQL experience is excellent

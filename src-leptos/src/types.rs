@@ -9,6 +9,24 @@ pub struct ConnectionConfig {
     pub password: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConnectionInfo {
+    pub host: String,
+    pub port: String,
+    pub database: String,
+    pub username: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct QueryResult {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<serde_json::Value>>,
+    pub truncated: bool,
+    pub row_limit: usize,
+    pub elapsed_ms: u64,
+    pub connection: ConnectionInfo,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionResult {
     pub success: bool,
@@ -143,6 +161,46 @@ pub struct RowData {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn query_result_matches_snake_case_ipc_contract() {
+        let payload = json!({
+            "columns": ["id", "value"],
+            "rows": [[1, null], [2, {"nested": true}]],
+            "truncated": true,
+            "row_limit": 1000,
+            "elapsed_ms": 42,
+            "connection": {
+                "host": "localhost", "port": "5432",
+                "database": "videre", "username": "reader"
+            }
+        });
+        let result: QueryResult = serde_json::from_value(payload.clone()).unwrap();
+        assert_eq!(result.rows[0][1], json!(null));
+        assert_eq!(result.rows[1][1], json!({"nested": true}));
+        assert_eq!(result.row_limit, 1000);
+        assert_eq!(result.elapsed_ms, 42);
+        assert_eq!(result.connection.port, "5432");
+        assert_eq!(serde_json::to_value(result).unwrap(), payload);
+    }
+
+    #[test]
+    fn empty_query_result_keeps_columns_and_connection_has_no_password() {
+        let payload = json!({
+            "columns": ["answer"], "rows": [], "truncated": false,
+            "row_limit": 1000, "elapsed_ms": 0,
+            "connection": {
+                "host": "localhost", "port": "5432",
+                "database": "videre", "username": "reader"
+            }
+        });
+        let result: QueryResult = serde_json::from_value(payload).unwrap();
+        assert_eq!(result.columns, ["answer"]);
+        assert!(result.rows.is_empty());
+        let connection = serde_json::to_value(result.connection).unwrap();
+        assert_eq!(connection.as_object().unwrap().len(), 4);
+        assert!(connection.get("password").is_none());
+    }
 
     #[test]
     fn connection_config_round_trip() {

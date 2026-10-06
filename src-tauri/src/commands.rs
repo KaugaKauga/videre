@@ -6,8 +6,8 @@ use tauri::State;
 use crate::pg;
 use crate::state::DbState;
 use crate::types::{
-    ConnectionConfig, ConnectionResult, ForeignKeyInfo, IndexInfo, RelationStructure, RoleInfo,
-    RowData, SortDirection, TableData, TableInfo, TablePrivilege,
+    ConnectionConfig, ConnectionInfo, ConnectionResult, ForeignKeyInfo, IndexInfo, QueryResult,
+    RelationStructure, RoleInfo, RowData, SortDirection, TableData, TableInfo, TablePrivilege,
 };
 
 const DEFAULT_PAGE_SIZE: i64 = 100;
@@ -47,17 +47,42 @@ pub async fn connect_to_db(
         Err(message) => return Ok(outcome(Err(message), "")),
     };
 
-    *state.connection.lock().await = Some(connection);
-    *state.config.lock().await = Some(config);
+    let mut connection_guard = state.connection.lock().await;
+    let mut config_guard = state.config.lock().await;
+    state.queries.cancel_all();
+    *connection_guard = Some(connection);
+    *config_guard = Some(config);
 
     Ok(outcome(Ok(()), "Connected successfully"))
 }
 
 #[tauri::command]
 pub async fn disconnect_db(state: State<'_, DbState>) -> Result<(), String> {
-    *state.connection.lock().await = None;
-    *state.config.lock().await = None;
+    let mut connection_guard = state.connection.lock().await;
+    let mut config_guard = state.config.lock().await;
+    state.queries.cancel_all();
+    *connection_guard = None;
+    *config_guard = None;
     Ok(())
+}
+
+#[tauri::command(rename_all = "camelCase")]
+pub async fn execute_query(
+    sql: String,
+    request_id: String,
+    state: State<'_, DbState>,
+) -> Result<QueryResult, String> {
+    state.execute_query(&sql, &request_id).await
+}
+
+#[tauri::command(rename_all = "camelCase")]
+pub async fn cancel_query(request_id: String, state: State<'_, DbState>) -> Result<(), String> {
+    state.queries.cancel(&request_id).await
+}
+
+#[tauri::command]
+pub async fn get_connection_info(state: State<'_, DbState>) -> Result<ConnectionInfo, String> {
+    state.connection_info().await
 }
 
 #[tauri::command]

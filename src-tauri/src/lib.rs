@@ -23,6 +23,9 @@ pub fn run() {
             commands::get_table_privileges,
             commands::get_row_by_pk,
             commands::disconnect_db,
+            commands::execute_query,
+            commands::cancel_query,
+            commands::get_connection_info,
         ])
         .setup(|app| {
             // On Windows/Linux, remove native decorations so our custom title bar

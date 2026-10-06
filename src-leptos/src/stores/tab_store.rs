@@ -1,4 +1,8 @@
+use std::collections::HashMap;
+
 use leptos::prelude::*;
+
+use crate::stores::QuerySession;
 
 // ---------------------------------------------------------------------------
 // Tab types
@@ -8,6 +12,7 @@ use leptos::prelude::*;
 pub enum TabType {
     Table { name: String, schema: String },
     Empty,
+    Query,
     Settings,
     Connection,
     Indexes,
@@ -43,6 +48,7 @@ fn generate_id() -> String {
 pub struct TabStore {
     pub tabs: RwSignal<Vec<Tab>>,
     pub active_tab_id: RwSignal<Option<String>>,
+    queries: RwSignal<HashMap<String, QuerySession>>,
 }
 
 impl TabStore {
@@ -50,6 +56,7 @@ impl TabStore {
         Self {
             tabs: RwSignal::new(Vec::new()),
             active_tab_id: RwSignal::new(None),
+            queries: RwSignal::new(HashMap::new()),
         }
     }
 
@@ -178,6 +185,57 @@ impl TabStore {
         self.active_tab_id.set(Some(id));
     }
 
+    /// Open an independent SQL draft, reusing an active empty tab when possible.
+    pub fn open_query_tab(&self) {
+        let mut tabs = self.tabs.get_untracked();
+        let active_id = self.active_tab_id.get_untracked();
+        let mut number = 1;
+        while tabs
+            .iter()
+            .any(|tab| tab.tab_type == TabType::Query && tab.label == format!("Query {number}"))
+        {
+            number += 1;
+        }
+        let label = format!("Query {number}");
+        if let Some(tab) = tabs
+            .iter_mut()
+            .find(|tab| Some(&tab.id) == active_id.as_ref() && tab.tab_type == TabType::Empty)
+        {
+            tab.label = label;
+            tab.tab_type = TabType::Query;
+            let id = tab.id.clone();
+            self.queries.update(|queries| {
+                queries.insert(id, QuerySession::new());
+            });
+            self.tabs.set(tabs);
+            return;
+        }
+        let id = generate_id();
+        self.queries.update(|queries| {
+            queries.insert(id.clone(), QuerySession::new());
+        });
+        tabs.push(Tab {
+            id: id.clone(),
+            label,
+            tab_type: TabType::Query,
+        });
+        self.tabs.set(tabs);
+        self.active_tab_id.set(Some(id));
+    }
+
+    pub fn query_session(&self, tab_id: &str) -> Option<QuerySession> {
+        self.queries
+            .with_untracked(|queries| queries.get(tab_id).cloned())
+    }
+
+    pub fn close_queries(&self) {
+        self.queries.with_untracked(|queries| {
+            for session in queries.values() {
+                session.close();
+            }
+        });
+    }
+
     // -- Tab actions -------------------------------------------------------
 
     /// Close a tab by ID.
@@ -188,6 +246,12 @@ impl TabStore {
         let mut tabs = self.tabs.get_untracked();
         let active_id = self.active_tab_id.get_untracked();
 
+        if let Some(session) = self.query_session(tab_id) {
+            session.close();
+            self.queries.update(|queries| {
+                queries.remove(tab_id);
+            });
+        }
         tabs.retain(|t| t.id != tab_id);
 
         if active_id.as_deref() == Some(tab_id) {
@@ -264,6 +328,34 @@ mod tests {
                 tab_type: TabType::Empty,
             })
             .collect()
+    }
+
+    #[test]
+    fn query_drafts_survive_switching_and_closing_releases_only_that_session() {
+        Owner::new().with(|| {
+            let store = TabStore::init();
+            store.tabs.set(tabs());
+            let first = super::QuerySession::new();
+            let second = super::QuerySession::new();
+            first.sql.set("SELECT 1".into());
+            second.sql.set("VALUES (2)".into());
+            store.queries.update(|queries| {
+                queries.insert("first".into(), first.clone());
+                queries.insert("second".into(), second.clone());
+            });
+            store.set_active("first");
+            store.set_active("second");
+            assert_eq!(
+                store.query_session("first").unwrap().sql.get_untracked(),
+                "SELECT 1"
+            );
+            store.close_tab("first");
+            assert!(first.closed.get_untracked());
+            assert!(store.query_session("first").is_none());
+            assert!(!second.closed.get_untracked());
+            store.close_queries();
+            assert!(second.closed.get_untracked());
+        });
     }
 
     #[test]

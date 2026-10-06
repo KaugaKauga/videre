@@ -16,6 +16,35 @@ pub struct ConnectionConfig {
     pub password: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ConnectionInfo {
+    pub host: String,
+    pub port: String,
+    pub database: String,
+    pub username: String,
+}
+
+impl From<&ConnectionConfig> for ConnectionInfo {
+    fn from(config: &ConnectionConfig) -> Self {
+        Self {
+            host: config.host.clone(),
+            port: config.port.clone(),
+            database: config.database.clone(),
+            username: config.username.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct QueryResult {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<serde_json::Value>>,
+    pub truncated: bool,
+    pub row_limit: usize,
+    pub elapsed_ms: u64,
+    pub connection: ConnectionInfo,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ConnectionResult {
     pub success: bool,

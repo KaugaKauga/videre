@@ -164,20 +164,29 @@ pub fn Sidebar() -> impl IntoView {
                     </div>
                 </div>
 
-                // Bottom section: Indexes + Roles
+                // Bottom section: Queries, Indexes + Roles
                 <div class="sidebar-bottom-section">
                     <nav class="sidebar-menu">
                         <button class="sidebar-menu-button"
                             tabindex=move || item_tabindex(table_count())
                             on:focus=move |_| focused_index.set(table_count())
+                            title="New SQL query (Cmd/Ctrl + N)"
+                            on:click=move |_| tab_store.open_query_tab()
+                        >
+                            <code aria-hidden="true">">_"</code>
+                            <span>"New query"</span>
+                        </button>
+                        <button class="sidebar-menu-button"
+                            tabindex=move || item_tabindex(table_count() + 1)
+                            on:focus=move |_| focused_index.set(table_count() + 1)
                             on:click=on_indexes_click
                         >
                             {icons::icon_list(16)}
                             <span>"Indexes"</span>
                         </button>
                         <button class="sidebar-menu-button"
-                            tabindex=move || item_tabindex(table_count() + 1)
-                            on:focus=move |_| focused_index.set(table_count() + 1)
+                            tabindex=move || item_tabindex(table_count() + 2)
+                            on:focus=move |_| focused_index.set(table_count() + 2)
                             on:click=on_roles_click
                         >
                             {icons::icon_users(16)}
@@ -191,8 +200,8 @@ pub fn Sidebar() -> impl IntoView {
             <div class="sidebar-footer">
                 <nav class="sidebar-menu">
                     <button class="sidebar-menu-button"
-                        tabindex=move || item_tabindex(table_count() + 2)
-                        on:focus=move |_| focused_index.set(table_count() + 2)
+                        tabindex=move || item_tabindex(table_count() + 3)
+                        on:focus=move |_| focused_index.set(table_count() + 3)
                         on:click=on_connection_click
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -206,8 +215,8 @@ pub fn Sidebar() -> impl IntoView {
                         <span>"Connection"</span>
                     </button>
                     <button class="sidebar-menu-button"
-                        tabindex=move || item_tabindex(table_count() + 3)
-                        on:focus=move |_| focused_index.set(table_count() + 3)
+                        tabindex=move || item_tabindex(table_count() + 4)
+                        on:focus=move |_| focused_index.set(table_count() + 4)
                         on:click=on_settings_click
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -236,8 +245,8 @@ pub fn Sidebar() -> impl IntoView {
     }
 }
 
-/// Indexes, Roles, Connection and Settings, which follow the tables.
-const FIXED_SIDEBAR_ITEMS: usize = 4;
+/// New query, Indexes, Roles, Connection and Settings, which follow the tables.
+const FIXED_SIDEBAR_ITEMS: usize = 5;
 
 fn sidebar_buttons(sidebar: &web_sys::Element) -> Vec<HtmlButtonElement> {
     let Ok(nodes) = sidebar.query_selector_all(".sidebar-menu-button") else {

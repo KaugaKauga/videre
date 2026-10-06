@@ -3,7 +3,7 @@ use serde::Serialize;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
-use crate::types::RelationStructure;
+use crate::types::{ConnectionInfo, QueryResult, RelationStructure};
 
 fn get_invoke_fn() -> Result<js_sys::Function, String> {
     let window = web_sys::window().ok_or("no global window")?;
@@ -56,6 +56,26 @@ pub async fn get_relation_structure(
     .await
 }
 
+fn execute_query_args(sql: &str, request_id: &str) -> serde_json::Value {
+    serde_json::json!({ "sql": sql, "requestId": request_id })
+}
+
+fn cancel_query_args(request_id: &str) -> serde_json::Value {
+    serde_json::json!({ "requestId": request_id })
+}
+
+pub async fn execute_query(sql: &str, request_id: &str) -> Result<QueryResult, String> {
+    invoke("execute_query", &execute_query_args(sql, request_id)).await
+}
+
+pub async fn cancel_query(request_id: &str) -> Result<(), String> {
+    invoke_void("cancel_query", &cancel_query_args(request_id)).await
+}
+
+pub async fn get_connection_info() -> Result<ConnectionInfo, String> {
+    invoke("get_connection_info", &serde_json::json!({})).await
+}
+
 /// Call a Tauri command that returns nothing.
 pub async fn invoke_void(cmd: &str, args: impl Serialize) -> Result<(), String> {
     let invoke_fn = get_invoke_fn()?;
@@ -71,4 +91,27 @@ pub async fn invoke_void(cmd: &str, args: impl Serialize) -> Result<(), String> 
         .map_err(|e| e.as_string().unwrap_or_else(|| format!("{:?}", e)))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn execute_query_sends_entire_sql_and_camel_case_request_id() {
+        let sql = "  WITH draft AS (SELECT 'λ' AS value)\nSELECT * FROM draft;\n";
+        assert_eq!(
+            execute_query_args(sql, "query-123"),
+            json!({ "sql": sql, "requestId": "query-123" })
+        );
+    }
+
+    #[test]
+    fn cancel_query_uses_the_same_request_id_contract() {
+        assert_eq!(
+            cancel_query_args("query-123"),
+            json!({ "requestId": "query-123" })
+        );
+    }
 }

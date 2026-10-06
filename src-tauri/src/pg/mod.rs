@@ -12,7 +12,10 @@
 pub mod catalog;
 pub mod convert;
 pub mod data;
+mod query;
 pub mod relation_structure;
+
+pub use query::QueryRegistry;
 
 use tokio_postgres::{Client, NoTls};
 
