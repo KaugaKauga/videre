@@ -1,22 +1,29 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use leptos::{html, prelude::*};
 use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlElement};
 
-use crate::types::{ForeignKeyInfo, SortDirection, SortSpec};
+use crate::types::{ForeignKeyInfo, SortDirection};
 
-fn next_sort(current: Option<&SortSpec>, column: &str) -> Option<SortSpec> {
+/// Sort by column position: query results may repeat a column name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ColumnSort {
+    pub column: usize,
+    pub direction: SortDirection,
+}
+
+fn next_sort(current: Option<ColumnSort>, column: usize) -> Option<ColumnSort> {
     match current {
         Some(sort) if sort.column == column && sort.direction == SortDirection::Asc => {
-            Some(SortSpec {
-                column: column.to_string(),
+            Some(ColumnSort {
+                column,
                 direction: SortDirection::Desc,
             })
         }
         Some(sort) if sort.column == column => None,
-        _ => Some(SortSpec {
-            column: column.to_string(),
+        _ => Some(ColumnSort {
+            column,
             direction: SortDirection::Asc,
         }),
     }
@@ -249,26 +256,26 @@ mod tests {
 
     #[test]
     fn sort_cycle_is_ascending_descending_then_default() {
-        let ascending = next_sort(None, "name").unwrap();
-        assert_eq!(ascending.column, "name");
+        let ascending = next_sort(None, 2).unwrap();
+        assert_eq!(ascending.column, 2);
         assert_eq!(ascending.direction, SortDirection::Asc);
 
-        let descending = next_sort(Some(&ascending), "name").unwrap();
+        let descending = next_sort(Some(ascending), 2).unwrap();
         assert_eq!(descending.direction, SortDirection::Desc);
-        assert_eq!(next_sort(Some(&descending), "name"), None);
+        assert_eq!(next_sort(Some(descending), 2), None);
     }
 
     #[test]
     fn selecting_another_column_starts_ascending() {
-        let current = SortSpec {
-            column: "name".into(),
+        let current = ColumnSort {
+            column: 0,
             direction: SortDirection::Desc,
         };
 
         assert_eq!(
-            next_sort(Some(&current), "created_at"),
-            Some(SortSpec {
-                column: "created_at".into(),
+            next_sort(Some(current), 1),
+            Some(ColumnSort {
+                column: 1,
                 direction: SortDirection::Asc,
             })
         );
@@ -387,14 +394,15 @@ mod tests {
 // DataTable component
 // ---------------------------------------------------------------------------
 
-/// Generic data table whose header clicks request server-side sorting.
+/// Generic data table whose header clicks request sorting from the parent.
 ///
 /// Renders a `<table>` with a sticky header row. Click column headers to
-/// cycle through ascending / descending / the backend's default order.
+/// cycle through ascending / descending / the source's default order; the
+/// parent decides whether that sorts on the server or in place.
 ///
-/// Optional FK support: pass `fk_columns` (column-name -> ForeignKeyInfo)
-/// and `fk_click` signal. When a user clicks an FK cell the signal is set
-/// so the parent can open a detail panel.
+/// Optional FK support: pass `fk_columns` (column position -> ForeignKeyInfo)
+/// and `fk_click`. Clicking an FK cell reports it so the parent can open a
+/// detail panel.
 #[component]
 pub fn DataTable(
     columns: Vec<String>,
@@ -404,18 +412,18 @@ pub fn DataTable(
     active_cell: RwSignal<Option<CellPosition>>,
     /// Pauses cell navigation and copy, e.g. while loading or a drawer is open.
     keyboard_enabled: Signal<bool>,
-    sort: RwSignal<Option<SortSpec>>,
-    on_sort: Callback<Option<SortSpec>>,
-    /// Arbitrary SQL results keep the ordering expressed by the query itself.
-    #[prop(optional = true)]
-    sortable: bool,
-    #[prop(optional)] fk_columns: Option<HashMap<String, ForeignKeyInfo>>,
-    #[prop(optional)] fk_click: Option<RwSignal<Option<(ForeignKeyInfo, serde_json::Value)>>>,
-    /// Receives the selected column name for the column-information drawer.
+    sort: Signal<Option<ColumnSort>>,
+    on_sort: Callback<Option<ColumnSort>>,
+    #[prop(optional)] fk_columns: HashMap<usize, ForeignKeyInfo>,
+    #[prop(optional)] fk_click: Option<Callback<(ForeignKeyInfo, serde_json::Value)>>,
+    /// Receives the selected column position for the column-information drawer.
     #[prop(optional)]
-    column_info_click: Option<Callback<String>>,
+    column_info_click: Option<Callback<usize>>,
+    /// Columns that offer information; every column when omitted.
+    #[prop(optional)]
+    column_info_columns: Option<HashSet<usize>>,
 ) -> impl IntoView {
-    let fk_map = fk_columns.unwrap_or_default();
+    let fk_by_idx = fk_columns;
 
     let col_count = columns.len();
     let row_count = rows.len();
@@ -425,13 +433,6 @@ pub fn DataTable(
         clamped_cell(active_cell.get(), row_count, col_count)
     }));
     let copy_error = RwSignal::new(None::<String>);
-
-    // Pre-compute which columns are FK columns (by index)
-    let fk_by_idx: HashMap<usize, ForeignKeyInfo> = columns
-        .iter()
-        .enumerate()
-        .filter_map(|(i, name)| fk_map.get(name).cloned().map(|fk| (i, fk)))
-        .collect();
 
     let source_rows = StoredValue::new(rows);
 
@@ -580,21 +581,18 @@ pub fn DataTable(
                             .enumerate()
                             .map(|(idx, col_name)| {
                                 let name = col_name.clone();
-                                let clicked_name = name.clone();
-                                let indicator_name = name.clone();
                                 let is_fk = fk_by_idx.contains_key(&idx);
-                                let info_column = name.clone();
-                                let column_info_click = column_info_click;
+                                let column_info_click = column_info_click.filter(|_| {
+                                    column_info_columns
+                                        .as_ref()
+                                        .is_none_or(|columns| columns.contains(&idx))
+                                });
                                 let info_label = format!("Column information for {name}");
                                 view! {
                                     <th
                                         class="data-table-th"
-                                        class:unsortable=!sortable
                                         on:click=move |_| {
-                                            if sortable {
-                                                let current = sort.get_untracked();
-                                                on_sort.run(next_sort(current.as_ref(), &clicked_name));
-                                            }
+                                            on_sort.run(next_sort(sort.get_untracked(), idx));
                                         }
                                     >
                                         <span class="data-table-th-inner">
@@ -607,13 +605,7 @@ pub fn DataTable(
                                                 None
                                             }}
                                             {move || {
-                                                if !sortable {
-                                                    return ().into_any();
-                                                }
-                                                let active_sort = sort.get();
-                                                if let Some(active) = active_sort
-                                                    .filter(|active| active.column == indicator_name)
-                                                {
+                                                if let Some(active) = sort.get().filter(|active| active.column == idx) {
                                                     let arrow = if active.direction == SortDirection::Asc {
                                                         "\u{25B2}" // up triangle
                                                     } else {
@@ -630,10 +622,10 @@ pub fn DataTable(
                                                     type="button"
                                                     title=info_label.clone()
                                                     aria-label=info_label
-                                                    data-column-info-for=info_column.clone()
+                                                    data-column-info-for=idx.to_string()
                                                     on:click=move |ev: web_sys::MouseEvent| {
                                                         ev.stop_propagation();
-                                                        callback.run(info_column.clone());
+                                                        callback.run(idx);
                                                     }
                                                 >
                                                     <span aria-hidden="true">"ⓘ"</span>
@@ -695,7 +687,6 @@ pub fn DataTable(
                                             .into_any()
                                         } else if let Some(fk) = fk_info {
                                             // FK cell — render as a clickable link
-                                            let fk_click = fk_click;
                                             view! {
                                                 <td class="data-table-td"
                                                     data-row=ri.to_string()
@@ -710,8 +701,8 @@ pub fn DataTable(
                                                         on:click=move |_| {
                                                             // WebKit does not necessarily focus a mouse-clicked button.
                                                             active_cell.set(Some(position));
-                                                            if let Some(sig) = fk_click {
-                                                                sig.set(Some((fk.clone(), raw_val.clone())));
+                                                            if let Some(fk_click) = fk_click {
+                                                                fk_click.run((fk.clone(), raw_val.clone()));
                                                             }
                                                         }
                                                     >

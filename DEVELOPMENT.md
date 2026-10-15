@@ -163,6 +163,9 @@ cd src-leptos && trunk serve # Serve WASM frontend at localhost:1420
 | `Home` / `End` | Focus the first / last sidebar item |
 | `Enter` / `Space` | Open the focused sidebar item |
 | `Tab` / `Shift + Tab` | Enter or leave the sidebar or table body as a single Tab stop |
+| `↑` / `↓` with SQL suggestions open | Select a table or column suggestion |
+| `Tab` with SQL suggestions open | Insert the selected suggestion |
+| `Escape` with SQL suggestions open | Dismiss suggestions |
 | `←` / `→` / `↑` / `↓` | Move between data cells while a table cell is focused |
 | `j` / `k` | Move down / up through data cells |
 | `Cmd + C` (macOS) / `Ctrl + C` (Windows) | Copy selected text, or the full focused cell value |
@@ -171,7 +174,8 @@ cd src-leptos && trunk serve # Serve WASM frontend at localhost:1420
 
 Tab cycling follows the visible tab order and wraps at either end. On macOS,
 `Ctrl + Tab` uses Control, not Command; `Cmd + Tab` remains the system app switcher.
-Plain `Tab` / `Shift + Tab` and text-navigation shortcuts are not intercepted.
+Plain `Tab` / `Shift + Tab` and text-navigation shortcuts are not intercepted,
+except unmodified `Tab` and `↑` / `↓` while SQL suggestions are open.
 
 Sidebar movement changes focus without opening tabs. Navigation includes tables,
 New query, Indexes, Roles, Connection, and Settings. Letter and arrow navigation is scoped to
@@ -198,11 +202,46 @@ Write one `SELECT`, `WITH`, or `VALUES` statement and run it with **Run** or
 switches for the current application session; closing a query tab requests
 cancellation. Drafts are not saved to disk or preserved across app restarts.
 
+The native editor highlights SQL keywords case-insensitively, leaving strings,
+quoted identifiers, and comments uncolored. A separate highlight layer preserves
+native caret, selection, undo/redo, and copy behavior; updates are coalesced once
+per animation frame instead of rewriting the textarea value on every input.
+Scripts above 128 KiB remain editable as plain text to avoid expensive highlight
+markup. No editor or syntax-highlighting package is required.
+
+Schema-aware suggestions appear at the caret for tables after `FROM` / `JOIN`
+and columns in flat `SELECT` expressions, `WHERE`, and `ORDER BY`, including
+basic table aliases such as `FROM creatures c` followed by `c.ty`. Use `↑` / `↓`
+to select, `Tab` to insert, or `Escape` to dismiss; clicking also accepts without
+moving focus out of the editor. The suggestion replaces the entire partial
+identifier, including any suffix after the caret. `Shift + Tab`, or `Tab` with
+no suggestions open, retains normal focus navigation.
+
+Tables reuse the loaded catalog, and column metadata is fetched lazily once per
+relation and cached across query tabs and the column-information drawer. Pending
+requests are deduplicated; a failed request is retried after 15 seconds, or at once
+with the drawer's **Retry**. Reconnecting clears this cache, ignores responses from
+the previous connection, and refetches for an open drawer. There are
+no database requests per keystroke and no value completion. Suggestions pause
+inside strings/comments, during IME composition, and above 128 KiB. This first
+version intentionally suppresses suggestions for CTEs, subqueries, set operations,
+and table functions rather than guessing their scope. Ambiguous unqualified
+relation names require schema qualification.
+
 Results show their execution connection, elapsed time, returned row count, and
-an explicit warning when the 1,000-row preview is truncated. Result columns and
-ordering come directly from SQL: there is no automatic sorting, pagination,
-foreign-key inference, or column-structure lookup for arbitrary query output.
-The table's cell navigation and copying remain available. **Cancel** interrupts
+an explicit warning when the 1,000-row preview is truncated. Values keep
+PostgreSQL's text output, except booleans, which show as `true`/`false` as in
+table tabs. Results use the same grid
+as table tabs, with cell navigation and copying. Clicking a header sorts the
+returned rows in place, without re-running the SQL: numerically when every value
+in the column is a number, otherwise as text, with NULLs last ascending. A
+truncated preview says that only the returned rows are sorted; each new execution
+starts in the SQL's own order. There is no pagination.
+
+Result columns that PostgreSQL's row description reports as reading a table or
+view column directly (not a computed expression or `VALUES`) keep that origin. Those columns
+get the column-information drawer, and foreign-key columns link to the
+referenced-row drawer, just like table tabs. **Cancel** interrupts
 execution, and syntax/database errors leave the SQL draft intact.
 
 ### Execution boundaries

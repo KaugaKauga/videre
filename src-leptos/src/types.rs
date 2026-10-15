@@ -20,11 +20,20 @@ pub struct ConnectionInfo {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct QueryResult {
     pub columns: Vec<String>,
+    /// The table column each result column reads directly, if any.
+    pub column_sources: Vec<Option<ResultColumnSource>>,
     pub rows: Vec<Vec<serde_json::Value>>,
     pub truncated: bool,
     pub row_limit: usize,
     pub elapsed_ms: u64,
     pub connection: ConnectionInfo,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResultColumnSource {
+    pub schema: String,
+    pub relation: String,
+    pub column: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,7 +91,7 @@ impl RelationStructureKey {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RelationStructure {
     pub schema: String,
     pub relation: String,
@@ -90,7 +99,7 @@ pub struct RelationStructure {
     pub columns: Vec<ColumnInfo>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColumnInfo {
     pub name: String,
     pub ordinal_position: i32,
@@ -105,7 +114,7 @@ pub struct ColumnInfo {
     pub constraints: Vec<ColumnConstraint>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColumnConstraint {
     pub name: String,
     pub kind: String,
@@ -166,6 +175,7 @@ mod tests {
     fn query_result_matches_snake_case_ipc_contract() {
         let payload = json!({
             "columns": ["id", "value"],
+            "column_sources": [{"schema": "public", "relation": "items", "column": "id"}, null],
             "rows": [[1, null], [2, {"nested": true}]],
             "truncated": true,
             "row_limit": 1000,
@@ -187,7 +197,7 @@ mod tests {
     #[test]
     fn empty_query_result_keeps_columns_and_connection_has_no_password() {
         let payload = json!({
-            "columns": ["answer"], "rows": [], "truncated": false,
+            "columns": ["answer"], "column_sources": [null], "rows": [], "truncated": false,
             "row_limit": 1000, "elapsed_ms": 0,
             "connection": {
                 "host": "localhost", "port": "5432",

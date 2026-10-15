@@ -35,9 +35,17 @@ impl From<&ConnectionConfig> for ConnectionInfo {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ResultColumnSource {
+    pub schema: String,
+    pub relation: String,
+    pub column: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct QueryResult {
     pub columns: Vec<String>,
+    pub column_sources: Vec<Option<ResultColumnSource>>,
     pub rows: Vec<Vec<serde_json::Value>>,
     pub truncated: bool,
     pub row_limit: usize,

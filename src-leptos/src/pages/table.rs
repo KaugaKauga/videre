@@ -1,17 +1,14 @@
 use std::collections::HashMap;
 
 use leptos::task::spawn_local;
-use leptos::{ev, html, leptos_dom::helpers::window_event_listener, prelude::*};
-use wasm_bindgen::JsCast;
+use leptos::{html, prelude::*};
 
-use crate::components::data_table::{focus_cell, CellPosition, DataTable};
-use crate::components::drawer::Drawer;
+use crate::components::data_table::{CellPosition, ColumnSort, DataTable};
 use crate::components::icons;
+use crate::components::relation_drawers::{ColumnTarget, RelationDrawerPanels, RelationDrawers};
 use crate::stores::db_store::DbStore;
 use crate::tauri;
-use crate::types::{
-    ColumnConstraint, ColumnInfo, ForeignKeyInfo, RelationStructure, RowData, SortSpec, TableData,
-};
+use crate::types::{ForeignKeyInfo, SortSpec, TableData};
 
 const PAGE_SIZE: i64 = 100;
 
@@ -74,314 +71,6 @@ fn fetch_page(
     });
 }
 
-/// Fetch a single row by primary key (for FK detail panel).
-fn fetch_fk_row(
-    fk: &ForeignKeyInfo,
-    value: &serde_json::Value,
-    panel_data: RwSignal<Option<RowData>>,
-    panel_loading: RwSignal<bool>,
-    panel_error: RwSignal<Option<String>>,
-) {
-    let table = fk.foreign_table_name.clone();
-    let schema = fk.foreign_table_schema.clone();
-    let column = fk.foreign_column_name.clone();
-    let value = value.clone();
-    panel_loading.set(true);
-    panel_error.set(None);
-    panel_data.set(None);
-
-    spawn_local(async move {
-        match tauri::invoke::<RowData>(
-            "get_row_by_pk",
-            &serde_json::json!({
-                "tableName": table,
-                "schema": schema,
-                "pkColumn": column,
-                "pkValue": value,
-            }),
-        )
-        .await
-        {
-            Ok(row) => {
-                panel_data.set(Some(row));
-                panel_loading.set(false);
-            }
-            Err(e) => {
-                panel_error.set(Some(format!("Failed to fetch row: {e}")));
-                panel_loading.set(false);
-            }
-        }
-    });
-}
-
-fn relation_context(structure: &RelationStructure) -> String {
-    format!(
-        "{}.{} · {}",
-        structure.schema, structure.relation, structure.relation_kind
-    )
-}
-
-fn metadata_value(value: Option<&String>) -> String {
-    value
-        .filter(|value| !value.is_empty())
-        .cloned()
-        .unwrap_or_else(|| "-".to_string())
-}
-
-fn detail_field(label: &str, value: impl Into<String>) -> AnyView {
-    let label = label.to_string();
-    let value = value.into();
-    view! {
-        <div class="row-detail-field column-info-field">
-            <span class="row-detail-label">{label}</span>
-            <span class="row-detail-value">{value}</span>
-        </div>
-    }
-    .into_any()
-}
-
-fn detail_code_field(label: &str, value: String) -> AnyView {
-    let label = label.to_string();
-    view! {
-        <div class="row-detail-field column-info-field">
-            <span class="row-detail-label">{label}</span>
-            <code class="row-detail-value column-info-code">{value}</code>
-        </div>
-    }
-    .into_any()
-}
-
-fn detail_section(title: &str, fields: Vec<AnyView>) -> AnyView {
-    let title = title.to_string();
-    view! {
-        <section class="column-info-section">
-            <h4 class="column-info-section-title">{title}</h4>
-            <div class="column-info-fields">{fields}</div>
-        </section>
-    }
-    .into_any()
-}
-
-fn constraint_view(constraint: ColumnConstraint) -> AnyView {
-    let kind = constraint.kind;
-    let definition = constraint.definition;
-    let mut fields = vec![detail_code_field("name", constraint.name)];
-
-    if let Some(position) = constraint.column_position {
-        fields.push(detail_code_field("position", position.to_string()));
-    }
-    fields.push(detail_code_field(
-        "columns",
-        if constraint.source_columns.is_empty() {
-            "-".to_string()
-        } else {
-            constraint.source_columns.join(", ")
-        },
-    ));
-    if let (Some(schema), Some(relation)) = (constraint.target_schema, constraint.target_relation) {
-        fields.push(detail_code_field(
-            "referenced relation",
-            format!("{schema}.{relation}"),
-        ));
-        fields.push(detail_code_field(
-            "referenced columns",
-            if constraint.target_columns.is_empty() {
-                "-".to_string()
-            } else {
-                constraint.target_columns.join(", ")
-            },
-        ));
-        fields.push(detail_code_field(
-            "on update",
-            metadata_value(constraint.on_update.as_ref()),
-        ));
-        fields.push(detail_code_field(
-            "on delete",
-            metadata_value(constraint.on_delete.as_ref()),
-        ));
-    }
-
-    view! {
-        <article class="column-constraint">
-            <code class="column-constraint-kind">{kind}</code>
-            <div class="column-info-fields">{fields}</div>
-            <code class="column-info-code column-constraint-definition">{definition}</code>
-        </article>
-    }
-    .into_any()
-}
-
-fn column_details(structure: RelationStructure, column: ColumnInfo) -> AnyView {
-    let mut overview = vec![
-        detail_field("Position", column.ordinal_position.to_string()),
-        detail_field(
-            "Relation",
-            format!("{}.{}", structure.schema, structure.relation),
-        ),
-        detail_code_field("relation kind", structure.relation_kind),
-        detail_code_field("Type", column.data_type),
-        detail_code_field("nullable", column.nullable.to_string()),
-    ];
-    if let Some(collation) = column.collation.filter(|collation| !collation.is_empty()) {
-        overview.push(detail_field("Collation", collation));
-    }
-
-    let generation = vec![
-        detail_code_field("identity", metadata_value(column.identity.as_ref())),
-        detail_code_field("generated", metadata_value(column.generated.as_ref())),
-        detail_code_field(
-            "default",
-            metadata_value(column.default_expression.as_ref()),
-        ),
-        detail_code_field(
-            "generation expression",
-            metadata_value(column.generation_expression.as_ref()),
-        ),
-    ];
-
-    let comment = column.comment.filter(|comment| !comment.is_empty());
-    let constraints = if column.constraints.is_empty() {
-        view! { <code class="column-info-code">"-"</code> }.into_any()
-    } else {
-        let constraints = column
-            .constraints
-            .into_iter()
-            .map(constraint_view)
-            .collect::<Vec<_>>();
-        view! { <div class="column-constraints">{constraints}</div> }.into_any()
-    };
-
-    view! {
-        <div class="column-info-details">
-            {detail_section("overview", overview)}
-            {detail_section("value generation", generation)}
-            {comment.map(|comment| view! {
-                <section class="column-info-section">
-                    <h4 class="column-info-section-title">"comment"</h4>
-                    <pre class="column-info-comment">{comment}</pre>
-                </section>
-            })}
-            <section class="column-info-section">
-                <h4 class="column-info-section-title">"constraints"</h4>
-                {constraints}
-            </section>
-        </div>
-    }
-    .into_any()
-}
-
-fn column_panel_content(
-    selected_column: Option<String>,
-    structure: Option<RelationStructure>,
-    loading: bool,
-    error: Option<String>,
-    retry: Callback<()>,
-) -> AnyView {
-    if loading {
-        return view! {
-            <div class="table-page-loading column-info-loading">
-                {icons::icon_spinner(16)}
-                <span>"Loading column information…"</span>
-            </div>
-        }
-        .into_any();
-    }
-
-    if let Some(error) = error {
-        return view! {
-            <div class="column-info-error">
-                <p>{error}</p>
-                <button class="btn btn-secondary btn-sm" type="button" on:click=move |_| retry.run(())>
-                    "Retry"
-                </button>
-            </div>
-        }
-        .into_any();
-    }
-
-    let Some(column_name) = selected_column else {
-        return view! { <p class="text-muted text-sm">"No column selected."</p> }.into_any();
-    };
-    let Some(structure) = structure else {
-        return view! {
-            <p class="text-muted text-sm">"Column information is not available."</p>
-        }
-        .into_any();
-    };
-    let Some(column) = structure
-        .columns
-        .iter()
-        .find(|column| column.name == column_name)
-        .cloned()
-    else {
-        return view! {
-            <p class="text-muted text-sm">"This column was not returned by the relation metadata."</p>
-        }
-        .into_any();
-    };
-
-    column_details(structure, column)
-}
-
-fn focus_column_info_button(table_page: NodeRef<html::Div>, column_name: &str) {
-    let Some(root) = table_page.get_untracked() else {
-        return;
-    };
-    let Ok(buttons) = root.query_selector_all("[data-column-info-for]") else {
-        return;
-    };
-
-    for index in 0..buttons.length() {
-        let Some(element) = buttons.item(index) else {
-            continue;
-        };
-        if let Ok(button) = element.dyn_into::<web_sys::HtmlButtonElement>() {
-            if button.get_attribute("data-column-info-for").as_deref() == Some(column_name) {
-                let _ = button.focus();
-                return;
-            }
-        }
-    }
-}
-
-fn fetch_relation_structure(
-    name: String,
-    schema: String,
-    db: DbStore,
-    request_id: RwSignal<u64>,
-    loading: RwSignal<bool>,
-    error: RwSignal<Option<String>>,
-    context: RwSignal<String>,
-) {
-    let this_request = request_id.get_untracked().wrapping_add(1);
-    request_id.set(this_request);
-    loading.set(true);
-    error.set(None);
-
-    spawn_local(async move {
-        match tauri::get_relation_structure(&name, &schema).await {
-            Ok(structure) => {
-                if request_id.get_untracked() != this_request {
-                    return;
-                }
-                context.set(relation_context(&structure));
-                db.cache_relation_structure(structure);
-                loading.set(false);
-            }
-            Err(error_message) => {
-                if request_id.get_untracked() != this_request {
-                    return;
-                }
-                context.set(format!("{schema}.{name}"));
-                error.set(Some(format!(
-                    "Failed to fetch column information: {error_message}"
-                )));
-                loading.set(false);
-            }
-        }
-    });
-}
-
 #[component]
 pub fn TablePage(name: String, schema: String) -> impl IntoView {
     let db = use_context::<DbStore>().expect("DbStore not provided");
@@ -397,63 +86,12 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
     let table_page = NodeRef::<html::Div>::new();
 
     // ---- Drawer state ------------------------------------------------------
-    let panel_open = RwSignal::new(false);
-    let panel_title = RwSignal::new(String::new());
-    let panel_data: RwSignal<Option<RowData>> = RwSignal::new(None);
-    let panel_loading = RwSignal::new(false);
-    let panel_error: RwSignal<Option<String>> = RwSignal::new(None);
-
-    let column_drawer_open = RwSignal::new(false);
-    let column_drawer_title = RwSignal::new(String::new());
-    let column_drawer_context = RwSignal::new(String::new());
-    let selected_column: RwSignal<Option<String>> = RwSignal::new(None);
-    let column_loading = RwSignal::new(false);
-    let column_error: RwSignal<Option<String>> = RwSignal::new(None);
-    let column_request_id = RwSignal::new(0_u64);
-    let column_info_opener: RwSignal<Option<String>> = RwSignal::new(None);
-
-    let keyboard_enabled =
-        Signal::derive(move || !is_loading.get() && !panel_open.get() && !column_drawer_open.get());
-
-    // Return focus to the cell that opened the drawer, like the column drawer does.
-    let close_fk_drawer = Callback::new(move |_| {
-        panel_open.set(false);
-        if let (Some(root), Some(position)) =
-            (table_page.get_untracked(), active_cell.get_untracked())
-        {
-            focus_cell(&root, position);
-        }
+    let drawers = RelationDrawers::new();
+    let keyboard_enabled = Signal::derive(move || !is_loading.get() && !drawers.is_open());
+    let drawer_root = Callback::new(move |()| table_page.get_untracked().map(Into::into));
+    let on_fk_click = Callback::new(move |(fk, value): (ForeignKeyInfo, serde_json::Value)| {
+        drawers.open_foreign_key(fk, value);
     });
-
-    let close_column_drawer = Callback::new(move |_| {
-        column_drawer_open.set(false);
-        column_info_opener.update(|opener| {
-            if let Some(column_name) = opener.take() {
-                if !panel_open.get_untracked() {
-                    focus_column_info_button(table_page, &column_name);
-                }
-            }
-        });
-    });
-
-    let escape_close_column_drawer = close_column_drawer;
-    let escape_close_fk_drawer = close_fk_drawer;
-    let table_drawer_keydown = window_event_listener(ev::keydown, move |event| {
-        if event.key() != "Escape" {
-            return;
-        }
-        if column_drawer_open.get_untracked() {
-            event.prevent_default();
-            escape_close_column_drawer.run(());
-        } else if panel_open.get_untracked() {
-            event.prevent_default();
-            escape_close_fk_drawer.run(());
-        }
-    });
-    on_cleanup(move || table_drawer_keydown.remove());
-
-    // Signals that DataTable writes to when FK cells or information buttons are clicked.
-    let fk_click: RwSignal<Option<(ForeignKeyInfo, serde_json::Value)>> = RwSignal::new(None);
 
     // ---- FK column map (static for this table) -----------------------------
     let fk_list = db.get_foreign_keys_for_table(&name, &schema);
@@ -464,63 +102,6 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
 
     // ---- Initial data fetch ------------------------------------------------
     fetch_page(&name, &schema, 0, None, data, request_id, is_loading, error);
-
-    // ---- Drawer mode transitions -------------------------------------------
-    let fk_click_effect = fk_click;
-    Effect::new(move |_prev: Option<()>| {
-        if let Some((ref fk, ref value)) = fk_click_effect.get() {
-            // Mode transitions must not restore the previous drawer's opener.
-            column_drawer_open.set(false);
-            column_info_opener.set(None);
-            panel_title.set(fk.foreign_table_name.clone());
-            panel_open.set(true);
-            fetch_fk_row(fk, value, panel_data, panel_loading, panel_error);
-        }
-    });
-
-    let name_column_info = name.clone();
-    let schema_column_info = schema.clone();
-    let on_column_info = Callback::new(move |column: String| {
-        panel_open.set(false);
-        selected_column.set(Some(column.clone()));
-        column_info_opener.set(Some(column.clone()));
-        column_drawer_title.set(column);
-        column_drawer_open.set(true);
-
-        if let Some(structure) = db.get_relation_structure(&schema_column_info, &name_column_info) {
-            column_drawer_context.set(relation_context(&structure));
-            column_error.set(None);
-            column_loading.set(false);
-        } else if !column_loading.get_untracked() {
-            column_drawer_context.set(format!(
-                "{}.{} · Loading relation…",
-                schema_column_info, name_column_info
-            ));
-            fetch_relation_structure(
-                name_column_info.clone(),
-                schema_column_info.clone(),
-                db,
-                column_request_id,
-                column_loading,
-                column_error,
-                column_drawer_context,
-            );
-        }
-    });
-
-    let name_retry = name.clone();
-    let schema_retry = schema.clone();
-    let retry_column_info = Callback::new(move |_| {
-        fetch_relation_structure(
-            name_retry.clone(),
-            schema_retry.clone(),
-            db,
-            column_request_id,
-            column_loading,
-            column_error,
-            column_drawer_context,
-        );
-    });
 
     // ---- Pagination helpers ------------------------------------------------
     let total_pages = Memo::new(move |_| {
@@ -579,6 +160,9 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
             error,
         );
     });
+
+    let name_column_info = name.clone();
+    let schema_column_info = schema.clone();
 
     let name_refresh = name.clone();
     let schema_refresh = schema.clone();
@@ -640,15 +224,52 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                 let showing_from = p as i64 * PAGE_SIZE + 1;
                 let showing_to = ((p as i64 + 1) * PAGE_SIZE).min(total);
 
+                // The grid sorts by position; requests name the column.
+                let fk_columns: HashMap<usize, ForeignKeyInfo> = cols
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, column)| fk_map.get(column).cloned().map(|fk| (index, fk)))
+                    .collect();
+                let sort_names = cols.clone();
+                let grid_sort = Signal::derive(move || {
+                    sort.with(|sort| {
+                        let sort = sort.as_ref()?;
+                        let column = sort_names.iter().position(|name| *name == sort.column)?;
+                        Some(ColumnSort { column, direction: sort.direction })
+                    })
+                });
+                let sort_columns = cols.clone();
+                let on_grid_sort = Callback::new(move |next: Option<ColumnSort>| {
+                    on_sort.run(next.and_then(|next| {
+                        Some(SortSpec {
+                            column: sort_columns.get(next.column)?.clone(),
+                            direction: next.direction,
+                        })
+                    }));
+                });
+                let info_columns = cols.clone();
+                let info_name = name_column_info.clone();
+                let info_schema = schema_column_info.clone();
+                let on_column_info = Callback::new(move |position: usize| {
+                    if let Some(column) = info_columns.get(position) {
+                        drawers.open_column(ColumnTarget {
+                            position,
+                            schema: info_schema.clone(),
+                            relation: info_name.clone(),
+                            column: column.clone(),
+                        });
+                    }
+                });
+
                 Some(view! {
                     <div class="table-page-body">
                         <DataTable
                             columns=cols
                             rows=rows
-                            sort=sort
-                            on_sort=on_sort
-                            fk_columns=fk_map.clone()
-                            fk_click=fk_click
+                            sort=grid_sort
+                            on_sort=on_grid_sort
+                            fk_columns=fk_columns
+                            fk_click=on_fk_click
                             column_info_click=on_column_info
                             active_cell=active_cell
                             keyboard_enabled=keyboard_enabled
@@ -690,81 +311,7 @@ pub fn TablePage(name: String, schema: String) -> impl IntoView {
                 })
             }}
 
-            <Drawer
-                open=panel_open
-                title=panel_title
-                subtitle="Referenced row details"
-                wide=true
-                close_on_escape=false
-                on_close=close_fk_drawer
-            >
-                {move || {
-                    if panel_loading.get() {
-                        return view! {
-                            <div class="table-page-loading">
-                                {icons::icon_spinner(16)}
-                                <span>"Loading…"</span>
-                            </div>
-                        }.into_any();
-                    }
-
-                    if let Some(err) = panel_error.get() {
-                        return view! {
-                            <div class="table-page-error"><p>{err}</p></div>
-                        }.into_any();
-                    }
-
-                    match panel_data.get() {
-                        Some(row) => {
-                            let pairs: Vec<_> = row.columns.iter().zip(row.values.iter())
-                                .map(|(col, val)| {
-                                    let display = if val.is_null() {
-                                        view! { <span class="null-value">"NULL"</span> }.into_any()
-                                    } else if val.is_object() || val.is_array() {
-                                        let json = serde_json::to_string_pretty(val)
-                                            .unwrap_or_else(|_| val.to_string());
-                                        view! { <code class="json-value">{json}</code> }.into_any()
-                                    } else {
-                                        let value = match val {
-                                            serde_json::Value::String(value) => value.clone(),
-                                            other => other.to_string(),
-                                        };
-                                        view! { <span>{value}</span> }.into_any()
-                                    };
-                                    view! {
-                                        <div class="row-detail-field">
-                                            <span class="row-detail-label">{col.clone()}</span>
-                                            <span class="row-detail-value">{display}</span>
-                                        </div>
-                                    }
-                                })
-                                .collect();
-                            view! { <div>{pairs}</div> }.into_any()
-                        }
-                        None => view! {
-                            <p class="text-muted text-sm">"No data to display"</p>
-                        }.into_any(),
-                    }
-                }}
-            </Drawer>
-
-            <Drawer
-                open=column_drawer_open
-                title=column_drawer_title
-                subtitle="Column information"
-                context=column_drawer_context
-                wide=true
-                close_on_escape=false
-                on_close=close_column_drawer
-            >
-                {move || column_panel_content(
-                    selected_column.get(),
-                    db.get_relation_structure(&schema, &name),
-                    column_loading.get(),
-                    column_error.get(),
-                    retry_column_info,
-                )}
-            </Drawer>
+            <RelationDrawerPanels drawers=drawers root=drawer_root active_cell=active_cell />
         </div>
     }
 }

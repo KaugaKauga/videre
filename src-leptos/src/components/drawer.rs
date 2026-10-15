@@ -27,7 +27,7 @@ pub fn Drawer(
     subtitle: &'static str,
     /// Optional reactive context line below the title and static subtitle.
     #[prop(optional)]
-    context: Option<RwSignal<String>>,
+    context: Option<Signal<String>>,
     /// Uses the wider drawer surface for information-dense content.
     #[prop(optional)]
     wide: bool,

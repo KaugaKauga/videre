@@ -256,6 +256,7 @@ fn ipc_result_has_only_the_requested_fields_and_never_passwords() {
     let config = test_config();
     let result = QueryResult {
         columns: vec!["?column?".into()],
+        column_sources: vec![None],
         rows: vec![vec![Value::String("1".into()), Value::Null]],
         truncated: false,
         row_limit: ROW_LIMIT,
@@ -263,7 +264,8 @@ fn ipc_result_has_only_the_requested_fields_and_never_passwords() {
         connection: ConnectionInfo::from(&config),
     };
     let value = serde_json::to_value(result).unwrap();
-    assert_eq!(value.as_object().unwrap().len(), 6);
+    assert_eq!(value.as_object().unwrap().len(), 7);
+    assert_eq!(value["column_sources"], json!([null]));
     assert_eq!(value["rows"], json!([["1", null]]));
     assert_eq!(value["row_limit"], 1000);
     assert_eq!(value["elapsed_ms"], 12);
@@ -296,6 +298,43 @@ async fn live_select_joins_grouping_with_and_values() {
     assert!(registry.entries.lock().unwrap().is_empty());
 }
 
+#[test]
+fn only_direct_table_columns_have_origins() {
+    let origins = column_origins(
+        [
+            (Some(16384), Some(2)),
+            (Some(0), Some(0)),
+            (None, None),
+            (Some(16384), Some(0)),
+            (Some(16390), Some(1)),
+        ]
+        .into_iter(),
+    );
+    assert_eq!(origins, vec![(0, 16384, 2), (4, 16390, 1)]);
+}
+
+#[tokio::test]
+#[ignore]
+async fn live_result_columns_report_their_table_column_sources() {
+    let registry = QueryRegistry::default();
+    let result = query(
+        &registry,
+        "SELECT c.relname, c.relname AS alias, 1 AS computed, upper(c.relname) FROM pg_catalog.pg_class c LIMIT 1",
+        "sources",
+    )
+    .await
+    .unwrap();
+    let relname = Some(ResultColumnSource {
+        schema: "pg_catalog".into(),
+        relation: "pg_class".into(),
+        column: "relname".into(),
+    });
+    assert_eq!(
+        result.column_sources,
+        vec![relname.clone(), relname, None, None]
+    );
+}
+
 #[tokio::test]
 #[ignore]
 async fn live_zero_rows_duplicate_and_unnamed_columns() {
@@ -321,7 +360,7 @@ async fn live_zero_rows_duplicate_and_unnamed_columns() {
 #[ignore]
 async fn live_exact_postgresql_text_and_nulls_for_arbitrary_types() {
     let registry = QueryRegistry::default();
-    let sql = "SELECT true, 9223372036854775807::bigint, 12345678901234567890.1234567890::numeric, 0.1::real, 'NaN'::float8, 'x'::char(4), ''::text, E'\\\\x00ff'::bytea, ARRAY[1, NULL, 3], '{\"b\": 1, \"a\": 2}'::jsonb, '2024-01-02 03:04:05.123456'::timestamp, '(1,2)'::point, '[1,5)'::int4range, ROW(1, 'x'), 'a & b'::tsquery, NULL::integer";
+    let sql = "SELECT true, 9223372036854775807::bigint, 12345678901234567890.1234567890::numeric, 0.1::real, 'NaN'::float8, 'x'::char(4), ''::text, E'\\\\x00ff'::bytea, ARRAY[1, NULL, 3], '{\"b\": 1, \"a\": 2}'::jsonb, '2024-01-02 03:04:05.123456'::timestamp, '(1,2)'::point, '[1,5)'::int4range, ROW(1, 'x'), 'a & b'::tsquery, NULL::integer, false, NULL::boolean";
     let reference = super::super::Connection::connect(&test_config())
         .await
         .unwrap();
@@ -344,8 +383,16 @@ async fn live_exact_postgresql_text_and_nulls_for_arbitrary_types() {
         })
         .collect::<Vec<_>>();
     let result = query(&registry, sql, "types").await.unwrap();
+    // Booleans are the one type shown as JSON values, like the table view.
+    let mut expected = expected;
+    assert_eq!(
+        (&expected[0][0], &expected[0][16]),
+        (&json!("t"), &json!("f"))
+    );
+    expected[0][0] = json!(true);
+    expected[0][16] = json!(false);
     assert_eq!(result.rows, expected);
-    assert_eq!(result.rows[0][0], json!("t"));
+    assert_eq!(result.rows[0][17], Value::Null);
     assert_eq!(result.rows[0][5], json!("x   "));
     assert_eq!(result.rows[0][6], json!(""));
     assert_eq!(result.rows[0][15], Value::Null);

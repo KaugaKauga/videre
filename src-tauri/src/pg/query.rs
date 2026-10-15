@@ -7,9 +7,10 @@ use serde_json::Value;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{timeout, Instant};
+use tokio_postgres::types::Type;
 use tokio_postgres::{Client, Error, NoTls, SimpleQueryMessage};
 
-use crate::types::{ConnectionConfig, ConnectionInfo, QueryResult};
+use crate::types::{ConnectionConfig, ConnectionInfo, QueryResult, ResultColumnSource};
 
 const ROW_LIMIT: usize = 1000;
 const FETCH_BATCH_SIZE: usize = 16;
@@ -147,15 +148,23 @@ impl QueryRequest {
         // unconditional and also rolls back an aborted or disconnected session.
         let _ = timeout(CLEANUP_TIMEOUT, connection.client.execute("ROLLBACK", &[])).await;
         connection.close().await;
-        result.map(|(columns, rows, truncated)| QueryResult {
-            columns,
-            rows,
-            truncated,
+        result.map(|preview| QueryResult {
+            columns: preview.columns,
+            column_sources: preview.column_sources,
+            rows: preview.rows,
+            truncated: preview.truncated,
             row_limit: ROW_LIMIT,
             elapsed_ms: started.elapsed().as_millis().min(u64::MAX as u128) as u64,
             connection: ConnectionInfo::from(&config),
         })
     }
+}
+
+struct Preview {
+    columns: Vec<String>,
+    column_sources: Vec<Option<ResultColumnSource>>,
+    rows: Vec<Vec<Value>>,
+    truncated: bool,
 }
 
 struct QueryConnection {
@@ -210,7 +219,7 @@ impl QueryConnection {
         self.driver.abort();
     }
 
-    async fn preview(&self, sql: &str) -> Result<(Vec<String>, Vec<Vec<Value>>, bool), String> {
+    async fn preview(&self, sql: &str) -> Result<Preview, String> {
         self.client
             .execute("BEGIN READ ONLY", &[])
             .await
@@ -247,6 +256,12 @@ impl QueryConnection {
             .iter()
             .map(|column| column.name().to_owned())
             .collect::<Vec<_>>();
+        let booleans = statement
+            .columns()
+            .iter()
+            .map(|column| column.type_() == &Type::BOOL)
+            .collect::<Vec<_>>();
+        let column_sources = self.column_sources(statement.columns()).await?;
         self.client
             .execute(
                 &format!("DECLARE videre_preview NO SCROLL CURSOR FOR {sql}"),
@@ -279,23 +294,117 @@ impl QueryConnection {
                     if rows.len() == ROW_LIMIT {
                         // Check the sentinel's row budget, but neither retain it
                         // nor charge it against the retained preview payload.
-                        return Ok((columns, rows, true));
+                        return Ok(Preview {
+                            columns,
+                            column_sources,
+                            rows,
+                            truncated: true,
+                        });
                     }
                     reserve_preview_bytes(&mut preview_bytes, row_bytes)?;
                     rows.push(
                         (0..row.len())
-                            .map(|index| {
-                                row.get(index)
-                                    .map_or(Value::Null, |text| Value::String(text.to_owned()))
-                            })
+                            .map(|index| cell_value(row.get(index), booleans[index]))
                             .collect(),
                     );
                 }
             }
             if fetched < fetch_count {
-                return Ok((columns, rows, false));
+                return Ok(Preview {
+                    columns,
+                    column_sources,
+                    rows,
+                    truncated: false,
+                });
             }
         }
+    }
+
+    /// Resolve the table column behind each result column from the statement's
+    /// row description, inside the same read-only transaction and snapshot.
+    /// Column sources are optional metadata: a failed catalog lookup yields no
+    /// sources rather than failing the query. The savepoint keeps that failure
+    /// from aborting the read-only transaction the user's query still needs.
+    async fn column_sources(
+        &self,
+        columns: &[tokio_postgres::Column],
+    ) -> Result<Vec<Option<ResultColumnSource>>, String> {
+        let origins = column_origins(
+            columns
+                .iter()
+                .map(|column| (column.table_oid(), column.column_id())),
+        );
+        let mut sources = vec![None; columns.len()];
+        if origins.is_empty() {
+            return Ok(sources);
+        }
+        let (positions, (relations, attributes)): (Vec<i32>, (Vec<u32>, Vec<i16>)) = origins
+            .into_iter()
+            .map(|(position, relation, attribute)| (position, (relation, attribute)))
+            .unzip();
+        self.client
+            .batch_execute("SAVEPOINT videre_column_sources")
+            .await
+            .map_err(|error| pg_error("Could not resolve query column sources", &error))?;
+        let lookup = self
+            .client
+            .query(
+                "SELECT origin.position, n.nspname, c.relname, a.attname \
+                 FROM unnest($1::int4[], $2::oid[], $3::int2[]) AS origin(position, relid, attnum) \
+                 JOIN pg_catalog.pg_attribute a ON a.attrelid = origin.relid AND a.attnum = origin.attnum AND NOT a.attisdropped \
+                 JOIN pg_catalog.pg_class c ON c.oid = origin.relid \
+                 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace",
+                &[&positions, &relations, &attributes],
+            )
+            .await;
+        let Ok(rows) = lookup else {
+            self.client
+                .batch_execute("ROLLBACK TO SAVEPOINT videre_column_sources")
+                .await
+                .map_err(|error| pg_error("Could not resolve query column sources", &error))?;
+            return Ok(sources);
+        };
+        for row in rows {
+            let position: i32 = row.get(0);
+            if let Some(source) = usize::try_from(position)
+                .ok()
+                .and_then(|position| sources.get_mut(position))
+            {
+                *source = Some(ResultColumnSource {
+                    schema: row.get(1),
+                    relation: row.get(2),
+                    column: row.get(3),
+                });
+            }
+        }
+        Ok(sources)
+    }
+}
+
+/// Result positions whose row description names a real table column. PostgreSQL
+/// reports 0 for both fields when a column is computed rather than read directly.
+fn column_origins(
+    columns: impl Iterator<Item = (Option<u32>, Option<i16>)>,
+) -> Vec<(i32, u32, i16)> {
+    columns
+        .enumerate()
+        .filter_map(|(position, origin)| match origin {
+            (Some(relation), Some(attribute)) if relation != 0 && attribute > 0 => {
+                Some((i32::try_from(position).ok()?, relation, attribute))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// Text-protocol cell as JSON. Booleans arrive as `t`/`f` and become JSON
+/// booleans, as in the table view; every other value keeps PostgreSQL's text.
+fn cell_value(text: Option<&str>, boolean: bool) -> Value {
+    match (text, boolean) {
+        (None, _) => Value::Null,
+        (Some("t"), true) => Value::Bool(true),
+        (Some("f"), true) => Value::Bool(false),
+        (Some(text), _) => Value::String(text.to_owned()),
     }
 }
 

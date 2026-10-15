@@ -1,14 +1,168 @@
+use std::cmp::Ordering as CmpOrdering;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use leptos::prelude::*;
+use leptos::{html, prelude::*};
 use wasm_bindgen_futures::spawn_local;
 
-use crate::components::data_table::{CellPosition, DataTable};
+use crate::components::data_table::{CellPosition, ColumnSort, DataTable};
+use crate::components::relation_drawers::{ColumnTarget, RelationDrawerPanels, RelationDrawers};
+use crate::components::sql_editor::SqlEditor;
+use crate::stores::db_store::DbStore;
 use crate::stores::QuerySession;
 use crate::tauri;
-use crate::types::{ConnectionInfo, SortSpec};
+use crate::types::{ConnectionInfo, ForeignKeyInfo, ResultColumnSource, SortDirection};
 
 static NEXT_EDITOR: AtomicU64 = AtomicU64::new(1);
+
+type Row = Vec<serde_json::Value>;
+
+/// Plain decimal text (`-12.50`, `9007199254740993`) compared exactly, so
+/// bigint and numeric values beyond f64 precision still sort correctly.
+#[derive(Debug, PartialEq, Eq)]
+struct ExactDecimal<'a> {
+    negative: bool,
+    /// Without leading zeros.
+    integer: &'a str,
+    /// Without trailing zeros.
+    fraction: &'a str,
+}
+
+impl<'a> ExactDecimal<'a> {
+    fn parse(text: &'a str) -> Option<Self> {
+        let (negative, unsigned) = match text.as_bytes().first()? {
+            b'-' => (true, &text[1..]),
+            b'+' => (false, &text[1..]),
+            _ => (false, text),
+        };
+        let (integer, fraction) = unsigned.split_once('.').unwrap_or((unsigned, ""));
+        let digits = |part: &str| part.bytes().all(|byte| byte.is_ascii_digit());
+        if (integer.is_empty() && fraction.is_empty()) || !digits(integer) || !digits(fraction) {
+            return None;
+        }
+        let integer = integer.trim_start_matches('0');
+        let fraction = fraction.trim_end_matches('0');
+        Some(Self {
+            negative: negative && !(integer.is_empty() && fraction.is_empty()),
+            integer,
+            fraction,
+        })
+    }
+}
+
+impl Ord for ExactDecimal<'_> {
+    fn cmp(&self, other: &Self) -> CmpOrdering {
+        let magnitude = || {
+            self.integer
+                .len()
+                .cmp(&other.integer.len())
+                .then_with(|| self.integer.cmp(other.integer))
+                .then_with(|| self.fraction.cmp(other.fraction))
+        };
+        match (self.negative, other.negative) {
+            (false, true) => CmpOrdering::Greater,
+            (true, false) => CmpOrdering::Less,
+            (false, false) => magnitude(),
+            (true, true) => magnitude().reverse(),
+        }
+    }
+}
+
+impl PartialOrd for ExactDecimal<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<CmpOrdering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// Orders by f64 value, then exactly among plain decimals that f64 cannot tell
+/// apart. Rounding is monotonic, so this agrees with exact decimal order while
+/// still placing exponent forms, NaN and infinities, and stays a total order.
+#[derive(Debug, PartialEq)]
+struct NumericKey<'a> {
+    value: f64,
+    exact: Option<ExactDecimal<'a>>,
+}
+
+impl<'a> NumericKey<'a> {
+    fn parse(value: &'a serde_json::Value) -> Option<Self> {
+        match value {
+            serde_json::Value::String(text) => {
+                let text = text.trim();
+                Some(Self {
+                    value: text.parse().ok()?,
+                    exact: ExactDecimal::parse(text),
+                })
+            }
+            serde_json::Value::Number(number) => Some(Self {
+                value: number.as_f64()?,
+                exact: None,
+            }),
+            _ => None,
+        }
+    }
+
+    fn cmp(&self, other: &Self) -> CmpOrdering {
+        self.value
+            .total_cmp(&other.value)
+            .then_with(|| self.exact.cmp(&other.exact))
+    }
+}
+
+/// Sorts the returned preview in place of re-running user SQL. A column whose
+/// values all parse as numbers sorts numerically, otherwise by text, so every
+/// column has a total order. NULLs sort last ascending, first descending,
+/// matching PostgreSQL's defaults. Ties keep the query's own order.
+fn sorted_rows(mut rows: Vec<Row>, sort: Option<ColumnSort>) -> Vec<Row> {
+    let Some(sort) = sort else {
+        return rows;
+    };
+    let numeric = rows.iter().all(|row| {
+        row.get(sort.column)
+            .is_none_or(|value| value.is_null() || NumericKey::parse(value).is_some())
+    });
+    let text = |value: &serde_json::Value| match value {
+        serde_json::Value::String(text) => text.clone(),
+        other => other.to_string(),
+    };
+    let compare = |a: &Row, b: &Row| -> CmpOrdering {
+        let (a, b) = (a.get(sort.column), b.get(sort.column));
+        let (a, b) = (a.filter(|v| !v.is_null()), b.filter(|v| !v.is_null()));
+        match (a, b) {
+            (None, None) => CmpOrdering::Equal,
+            (None, Some(_)) => CmpOrdering::Greater,
+            (Some(_), None) => CmpOrdering::Less,
+            (Some(a), Some(b)) if numeric => match (NumericKey::parse(a), NumericKey::parse(b)) {
+                (Some(a), Some(b)) => a.cmp(&b),
+                _ => CmpOrdering::Equal,
+            },
+            (Some(a), Some(b)) => text(a).cmp(&text(b)),
+        }
+    };
+    match sort.direction {
+        SortDirection::Asc => rows.sort_by(compare),
+        SortDirection::Desc => rows.sort_by(|a, b| compare(b, a)),
+    }
+    rows
+}
+
+/// FK links for result columns that read a foreign-key column directly.
+fn foreign_key_columns(
+    sources: &[Option<ResultColumnSource>],
+    foreign_keys: &HashMap<String, Vec<ForeignKeyInfo>>,
+) -> HashMap<usize, ForeignKeyInfo> {
+    sources
+        .iter()
+        .enumerate()
+        .filter_map(|(position, source)| {
+            let source = source.as_ref()?;
+            let fk = foreign_keys
+                .get(&format!("{}.{}", source.schema, source.relation))?
+                .iter()
+                .find(|fk| fk.column_name == source.column)?;
+            Some((position, fk.clone()))
+        })
+        .collect()
+}
 
 fn run_shortcut(
     key: &str,
@@ -82,9 +236,24 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
         });
     }
 
+    let db = use_context::<DbStore>().expect("DbStore not provided");
     let active_cell = RwSignal::new(None::<CellPosition>);
-    let sort = RwSignal::new(None::<SortSpec>);
-    let keyboard_enabled = Signal::derive(move || !closed.get() && !running.get());
+    let sort = RwSignal::new(None::<ColumnSort>);
+    // A new execution starts in the order its SQL produced.
+    Effect::new(move |previous: Option<()>| {
+        result.track();
+        if previous.is_some() {
+            sort.set(None);
+        }
+    });
+    let page_ref = NodeRef::<html::Section>::new();
+    let drawers = RelationDrawers::new();
+    let drawer_root = Callback::new(move |()| page_ref.get_untracked().map(Into::into));
+    let on_fk_click = Callback::new(move |(fk, value): (ForeignKeyInfo, serde_json::Value)| {
+        drawers.open_foreign_key(fk, value);
+    });
+    let keyboard_enabled =
+        Signal::derive(move || !closed.get() && !running.get() && !drawers.is_open());
     let editor_id = format!("query-sql-{}", NEXT_EDITOR.fetch_add(1, Ordering::Relaxed));
     let is_mac = web_sys::window()
         .and_then(|window| window.navigator().platform().ok())
@@ -115,7 +284,7 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
     let on_cancel = Callback::new(move |()| cancel_session.cancel());
 
     view! {
-        <section class="query-page" aria-label="SQL query" on:keydown=on_keydown>
+        <section class="query-page" aria-label="SQL query" node_ref=page_ref on:keydown=on_keydown>
             <header class="query-page-header">
                 <div class="query-heading">
                     <h2>"Query"</h2>
@@ -159,22 +328,7 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
                 <label class="query-editor-label" for=editor_id.clone()>
                     {format!("SQL — run entire query with {shortcut_label}")}
                 </label>
-                <textarea
-                    id=editor_id
-                    class="query-sql-input"
-
-                    rows="8"
-                    spellcheck="false"
-                    autocomplete="off"
-                    autocapitalize="off"
-                    disabled=move || closed.get()
-                    prop:value=move || sql.get()
-                    on:input=move |event| {
-                        if !closed.get_untracked() {
-                            sql.set(event_target::<web_sys::HtmlTextAreaElement>(&event).value());
-                        }
-                    }
-                ></textarea>
+                <SqlEditor id=editor_id sql=sql disabled=Signal::derive(move || closed.get()) />
             </div>
 
             <p class="query-status" role="status" aria-live="polite">
@@ -208,6 +362,28 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
                 );
                 let truncated = output.truncated;
                 let row_limit = output.row_limit;
+                let active_sort = sort.get().filter(|sort| sort.column < output.columns.len());
+                let rows = sorted_rows(output.rows, active_sort);
+                let fk_columns = db
+                    .foreign_keys
+                    .with_untracked(|foreign_keys| foreign_key_columns(&output.column_sources, foreign_keys));
+                let info_columns: HashSet<usize> = output
+                    .column_sources
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(position, source)| source.as_ref().map(|_| position))
+                    .collect();
+                let sources = output.column_sources;
+                let on_column_info = Callback::new(move |position: usize| {
+                    if let Some(Some(source)) = sources.get(position) {
+                        drawers.open_column(ColumnTarget {
+                            position,
+                            schema: source.schema.clone(),
+                            relation: source.relation.clone(),
+                            column: source.column.clone(),
+                        });
+                    }
+                });
                 Some(view! {
                     <section class="query-results" aria-label="Query results">
                         <div class="query-results-summary">
@@ -219,20 +395,25 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
                         {truncated.then(|| view! {
                             <p class="query-truncated" role="status">
                                 {format!("Preview truncated at {row_limit} rows. Additional rows were not returned.")}
+                                {active_sort.map(|_| " Sorting applies to the returned preview only.")}
                             </p>
                         })}
                         <DataTable
                             columns=output.columns
-                            rows=output.rows
+                            rows=rows
                             active_cell=active_cell
                             keyboard_enabled=keyboard_enabled
-                            sort=sort
-                            on_sort=Callback::new(|_| {})
-                            sortable=false
+                            sort=Signal::from(sort)
+                            on_sort=Callback::new(move |next| sort.set(next))
+                            fk_columns=fk_columns
+                            fk_click=on_fk_click
+                            column_info_click=on_column_info
+                            column_info_columns=info_columns
                         />
                     </section>
                 })
             }}
+            <RelationDrawerPanels drawers=drawers root=drawer_root active_cell=active_cell />
         </section>
     }
 }
@@ -240,6 +421,150 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::{json, Value};
+
+    fn column(rows: &[Row], index: usize) -> Vec<Value> {
+        rows.iter().map(|row| row[index].clone()).collect()
+    }
+
+    #[test]
+    fn numeric_text_columns_sort_by_value_with_postgres_null_placement() {
+        let rows: Vec<Row> = ["10", "9", "-1.5", "1e3"]
+            .into_iter()
+            .map(|n| vec![json!(n)])
+            .chain([vec![Value::Null]])
+            .collect();
+        let ascending = sorted_rows(
+            rows.clone(),
+            Some(ColumnSort {
+                column: 0,
+                direction: SortDirection::Asc,
+            }),
+        );
+        assert_eq!(
+            column(&ascending, 0),
+            [
+                json!("-1.5"),
+                json!("9"),
+                json!("10"),
+                json!("1e3"),
+                Value::Null
+            ]
+        );
+        let descending = sorted_rows(
+            rows.clone(),
+            Some(ColumnSort {
+                column: 0,
+                direction: SortDirection::Desc,
+            }),
+        );
+        assert_eq!(
+            column(&descending, 0),
+            [
+                Value::Null,
+                json!("1e3"),
+                json!("10"),
+                json!("9"),
+                json!("-1.5")
+            ]
+        );
+        assert_eq!(sorted_rows(rows.clone(), None), rows);
+    }
+
+    #[test]
+    fn numeric_columns_sort_exactly_beyond_f64_precision() {
+        let values = [
+            "9007199254740993",
+            "9007199254740992",
+            "-9007199254740993",
+            "-9007199254740992",
+            "12345678901234567.25",
+            "12345678901234567.2",
+            "0.10",
+            "-0",
+            "1e2",
+            "100.5",
+        ];
+        let rows: Vec<Row> = values.into_iter().map(|n| vec![json!(n)]).collect();
+        let ascending = sorted_rows(
+            rows,
+            Some(ColumnSort {
+                column: 0,
+                direction: SortDirection::Asc,
+            }),
+        );
+        assert_eq!(
+            column(&ascending, 0),
+            [
+                json!("-9007199254740993"),
+                json!("-9007199254740992"),
+                json!("-0"),
+                json!("0.10"),
+                json!("1e2"),
+                json!("100.5"),
+                json!("9007199254740992"),
+                json!("9007199254740993"),
+                json!("12345678901234567.2"),
+                json!("12345678901234567.25"),
+            ]
+        );
+    }
+
+    #[test]
+    fn mixed_columns_sort_as_text_and_ties_keep_query_order() {
+        let rows: Vec<Row> = vec![
+            vec![json!("b"), json!(1)],
+            vec![json!("10"), json!(2)],
+            vec![json!("b"), json!(3)],
+            vec![json!("9"), json!(4)],
+        ];
+        let sorted = sorted_rows(
+            rows,
+            Some(ColumnSort {
+                column: 0,
+                direction: SortDirection::Asc,
+            }),
+        );
+        assert_eq!(
+            column(&sorted, 0),
+            [json!("10"), json!("9"), json!("b"), json!("b")]
+        );
+        assert_eq!(column(&sorted, 1), [json!(2), json!(4), json!(1), json!(3)]);
+    }
+
+    #[test]
+    fn only_direct_foreign_key_columns_link_by_result_position() {
+        let source = |relation: &str, column: &str| {
+            Some(ResultColumnSource {
+                schema: "public".into(),
+                relation: relation.into(),
+                column: column.into(),
+            })
+        };
+        let owner_fk = ForeignKeyInfo {
+            column_name: "owner_id".into(),
+            foreign_table_schema: "public".into(),
+            foreign_table_name: "owners".into(),
+            foreign_column_name: "id".into(),
+        };
+        let foreign_keys =
+            HashMap::from([("public.creatures".to_string(), vec![owner_fk.clone()])]);
+        let links = foreign_key_columns(
+            &[
+                source("creatures", "id"),
+                None,
+                source("creatures", "owner_id"),
+                source("owners", "owner_id"),
+                source("creatures", "owner_id"),
+            ],
+            &foreign_keys,
+        );
+        assert_eq!(
+            links.keys().copied().collect::<HashSet<_>>(),
+            HashSet::from([2, 4])
+        );
+        assert_eq!(links[&2].foreign_table_name, "owners");
+    }
 
     #[test]
     fn run_shortcut_uses_only_the_platform_command_modifier() {

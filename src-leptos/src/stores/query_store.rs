@@ -240,6 +240,7 @@ mod tests {
     fn result() -> QueryResult {
         QueryResult {
             columns: vec!["answer".into()],
+            column_sources: vec![None],
             rows: vec![vec![serde_json::json!(42)]],
             truncated: false,
             row_limit: 1000,
