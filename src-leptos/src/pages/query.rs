@@ -108,13 +108,15 @@ impl<'a> NumericKey<'a> {
     }
 }
 
-/// Sorts the returned preview in place of re-running user SQL. A column whose
-/// values all parse as numbers sorts numerically, otherwise by text, so every
-/// column has a total order. NULLs sort last ascending, first descending,
-/// matching PostgreSQL's defaults. Ties keep the query's own order.
-fn sorted_rows(mut rows: Vec<Row>, sort: Option<ColumnSort>) -> Vec<Row> {
+/// Display order of the returned preview, as indices into its rows, so the
+/// preview is sorted without re-running user SQL. A column whose values all
+/// parse as numbers sorts numerically, otherwise by text, so every column has a
+/// total order. NULLs sort last ascending, first descending, matching
+/// PostgreSQL's defaults. Ties keep the query's own order.
+fn sort_order(rows: &[Row], sort: Option<ColumnSort>) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..rows.len()).collect();
     let Some(sort) = sort else {
-        return rows;
+        return order;
     };
     let numeric = rows.iter().all(|row| {
         row.get(sort.column)
@@ -139,10 +141,16 @@ fn sorted_rows(mut rows: Vec<Row>, sort: Option<ColumnSort>) -> Vec<Row> {
         }
     };
     match sort.direction {
-        SortDirection::Asc => rows.sort_by(compare),
-        SortDirection::Desc => rows.sort_by(|a, b| compare(b, a)),
+        SortDirection::Asc => order.sort_by(|&a, &b| compare(&rows[a], &rows[b])),
+        SortDirection::Desc => order.sort_by(|&a, &b| compare(&rows[b], &rows[a])),
     }
-    rows
+    order
+}
+
+/// The display row that shows the same record once the order changes.
+fn remapped_row(row: usize, from: &[usize], to: &[usize]) -> Option<usize> {
+    let record = *from.get(row)?;
+    to.iter().position(|&index| index == record)
 }
 
 /// FK links for result columns that read a foreign-key column directly.
@@ -244,6 +252,29 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
         result.track();
         if previous.is_some() {
             sort.set(None);
+        }
+    });
+    let order = Memo::new(move |_| {
+        let sort = sort.get();
+        result.with(|output| {
+            output.as_ref().map_or_else(Vec::new, |output| {
+                let sort = sort.filter(|sort| sort.column < output.columns.len());
+                sort_order(&output.rows, sort)
+            })
+        })
+    });
+    // Positions index the display order, so keep the focused record, not its row.
+    let on_sort = Callback::new(move |next: Option<ColumnSort>| {
+        let before = order.get_untracked();
+        sort.set(next);
+        let Some(mut cell) = active_cell.get_untracked() else {
+            return;
+        };
+        if let Some(row) = order.with_untracked(|after| remapped_row(cell.row, &before, after)) {
+            if row != cell.row {
+                cell.row = row;
+                active_cell.set(Some(cell));
+            }
         }
     });
     let page_ref = NodeRef::<html::Section>::new();
@@ -353,27 +384,38 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
             })}
 
             {move || {
-                let output = result.get()?;
+                // Copies only what the view keeps; rows are cloned once, in display order.
+                let (columns, sources, rows, summary, truncated, row_limit) = result.with(|output| {
+                    let output = output.as_ref()?;
+                    let summary = format!(
+                        "{} rows returned · {} ms · Executed on {}",
+                        output.rows.len(),
+                        output.elapsed_ms,
+                        connection_label(&output.connection)
+                    );
+                    let rows: Vec<Row> = order.with(|order| {
+                        order.iter().map(|&index| output.rows[index].clone()).collect()
+                    });
+                    Some((
+                        output.columns.clone(),
+                        output.column_sources.clone(),
+                        rows,
+                        summary,
+                        output.truncated,
+                        output.row_limit,
+                    ))
+                })?;
                 let original_sql = result_sql.get_untracked().unwrap_or_default();
-                let connection = connection_label(&output.connection);
-                let summary = format!(
-                    "{} rows returned · {} ms · Executed on {}",
-                    output.rows.len(), output.elapsed_ms, connection
-                );
-                let truncated = output.truncated;
-                let row_limit = output.row_limit;
-                let active_sort = sort.get().filter(|sort| sort.column < output.columns.len());
-                let rows = sorted_rows(output.rows, active_sort);
+                let active_sort = sort.get().filter(|sort| sort.column < columns.len());
+                // Tracked: links appear once metadata loads, including after a reconnect.
                 let fk_columns = db
                     .foreign_keys
-                    .with_untracked(|foreign_keys| foreign_key_columns(&output.column_sources, foreign_keys));
-                let info_columns: HashSet<usize> = output
-                    .column_sources
+                    .with(|foreign_keys| foreign_key_columns(&sources, foreign_keys));
+                let info_columns: HashSet<usize> = sources
                     .iter()
                     .enumerate()
                     .filter_map(|(position, source)| source.as_ref().map(|_| position))
                     .collect();
-                let sources = output.column_sources;
                 let on_column_info = Callback::new(move |position: usize| {
                     if let Some(Some(source)) = sources.get(position) {
                         drawers.open_column(ColumnTarget {
@@ -399,12 +441,12 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
                             </p>
                         })}
                         <DataTable
-                            columns=output.columns
+                            columns=columns
                             rows=rows
                             active_cell=active_cell
                             keyboard_enabled=keyboard_enabled
                             sort=Signal::from(sort)
-                            on_sort=Callback::new(move |next| sort.set(next))
+                            on_sort=on_sort
                             fk_columns=fk_columns
                             fk_click=on_fk_click
                             column_info_click=on_column_info
@@ -425,6 +467,23 @@ mod tests {
 
     fn column(rows: &[Row], index: usize) -> Vec<Value> {
         rows.iter().map(|row| row[index].clone()).collect()
+    }
+
+    fn sorted_rows(rows: Vec<Row>, sort: Option<ColumnSort>) -> Vec<Row> {
+        sort_order(&rows, sort)
+            .into_iter()
+            .map(|index| rows[index].clone())
+            .collect()
+    }
+
+    #[test]
+    fn focused_row_follows_its_record_across_orders() {
+        let unsorted = [0, 1, 2, 3];
+        let sorted = [2, 0, 3, 1];
+        assert_eq!(remapped_row(0, &unsorted, &sorted), Some(1));
+        assert_eq!(remapped_row(1, &sorted, &unsorted), Some(0));
+        assert_eq!(remapped_row(3, &sorted, &sorted), Some(3));
+        assert_eq!(remapped_row(4, &unsorted, &sorted), None);
     }
 
     #[test]
