@@ -640,9 +640,7 @@ pub fn DataTable(
                     </tr>
                 </thead>
                 <tbody>
-                    {move || {
-                        let display_rows = source_rows.get_value();
-
+                    {move || source_rows.with_value(|display_rows| {
                         if display_rows.is_empty() {
                             return vec![view! {
                                 <tr>
@@ -654,7 +652,7 @@ pub fn DataTable(
                         }
 
                         display_rows
-                            .into_iter()
+                            .iter()
                             .enumerate()
                             .map(|(ri, row)| {
                                 let cells: Vec<_> = row
@@ -726,7 +724,7 @@ pub fn DataTable(
                                 view! { <tr class="data-table-row">{cells}</tr> }.into_any()
                             })
                             .collect::<Vec<_>>()
-                    }}
+                    })}
                 </tbody>
             </table>
         </div>

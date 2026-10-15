@@ -12,6 +12,11 @@ use crate::types::{
 type ForeignKeyMap = HashMap<String, Vec<ForeignKeyInfo>>;
 type IndexMap = HashMap<String, Vec<IndexInfo>>;
 
+/// Key of a table in the foreign-key and index maps.
+pub fn table_key(schema: &str, table: &str) -> String {
+    format!("{schema}.{table}")
+}
+
 /// A failed lazy fetch is not retried on every keystroke, but a transient error
 /// must not disable a relation until reconnecting either.
 const FAILED_REQUEST_RETRY_MS: f64 = 15_000.0;
@@ -140,7 +145,7 @@ impl DbStore {
         let mut idx_map: IndexMap = HashMap::new();
 
         for table in &tables {
-            let key = format!("{}.{}", table.schema, table.name);
+            let key = table_key(&table.schema, &table.name);
 
             let fks: Vec<ForeignKeyInfo> = tauri::invoke(
                 "get_foreign_keys",
@@ -218,7 +223,7 @@ impl DbStore {
         table_name: &str,
         schema: &str,
     ) -> Vec<ForeignKeyInfo> {
-        let key = format!("{schema}.{table_name}");
+        let key = table_key(schema, table_name);
         self.foreign_keys
             .get_untracked()
             .get(&key)
@@ -365,7 +370,7 @@ impl DbStore {
     /// Get indexes for a specific table.
     #[allow(dead_code)]
     pub fn get_indexes_for_table(&self, table_name: &str, schema: &str) -> Vec<IndexInfo> {
-        let key = format!("{schema}.{table_name}");
+        let key = table_key(schema, table_name);
         self.indexes
             .get_untracked()
             .get(&key)

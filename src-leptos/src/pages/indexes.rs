@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use crate::stores::db_store::DbStore;
+use crate::stores::db_store::{table_key, DbStore};
 use crate::types::IndexInfo;
 
 // ---------------------------------------------------------------------------
@@ -28,8 +28,10 @@ fn collect_indexes(db: &DbStore) -> Vec<IndexInfo> {
     let mut all: Vec<IndexInfo> = tables
         .iter()
         .flat_map(|t| {
-            let key = format!("{}.{}", t.schema, t.name);
-            index_map.get(&key).cloned().unwrap_or_default()
+            index_map
+                .get(&table_key(&t.schema, &t.name))
+                .cloned()
+                .unwrap_or_default()
         })
         .collect();
 

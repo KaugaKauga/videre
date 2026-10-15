@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cmp::Ordering as CmpOrdering;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -8,7 +9,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::components::data_table::{CellPosition, ColumnSort, DataTable};
 use crate::components::relation_drawers::{ColumnTarget, RelationDrawerPanels, RelationDrawers};
 use crate::components::sql_editor::SqlEditor;
-use crate::stores::db_store::DbStore;
+use crate::stores::db_store::{table_key, DbStore};
 use crate::stores::QuerySession;
 use crate::tauri;
 use crate::types::{ConnectionInfo, ForeignKeyInfo, ResultColumnSource, SortDirection};
@@ -118,33 +119,50 @@ fn sort_order(rows: &[Row], sort: Option<ColumnSort>) -> Vec<usize> {
     let Some(sort) = sort else {
         return order;
     };
-    let numeric = rows.iter().all(|row| {
-        row.get(sort.column)
-            .is_none_or(|value| value.is_null() || NumericKey::parse(value).is_some())
-    });
-    let text = |value: &serde_json::Value| match value {
-        serde_json::Value::String(text) => text.clone(),
-        other => other.to_string(),
-    };
-    let compare = |a: &Row, b: &Row| -> CmpOrdering {
-        let (a, b) = (a.get(sort.column), b.get(sort.column));
-        let (a, b) = (a.filter(|v| !v.is_null()), b.filter(|v| !v.is_null()));
-        match (a, b) {
-            (None, None) => CmpOrdering::Equal,
-            (None, Some(_)) => CmpOrdering::Greater,
-            (Some(_), None) => CmpOrdering::Less,
-            (Some(a), Some(b)) if numeric => match (NumericKey::parse(a), NumericKey::parse(b)) {
-                (Some(a), Some(b)) => a.cmp(&b),
-                _ => CmpOrdering::Equal,
-            },
-            (Some(a), Some(b)) => text(a).cmp(&text(b)),
+    let values: Vec<Option<&serde_json::Value>> = rows
+        .iter()
+        .map(|row| row.get(sort.column).filter(|value| !value.is_null()))
+        .collect();
+    // Keys are built once per row; comparisons neither parse nor allocate.
+    let numbers: Option<Vec<Option<NumericKey>>> = values
+        .iter()
+        .map(|value| value.map_or(Some(None), |value| NumericKey::parse(value).map(Some)))
+        .collect();
+    match numbers {
+        Some(keys) => sort_by_keys(&mut order, &keys, sort.direction, NumericKey::cmp),
+        None => {
+            let keys: Vec<Option<Cow<str>>> = values
+                .iter()
+                .map(|value| {
+                    value.map(|value| match value {
+                        serde_json::Value::String(text) => Cow::Borrowed(text.as_str()),
+                        other => Cow::Owned(other.to_string()),
+                    })
+                })
+                .collect();
+            sort_by_keys(&mut order, &keys, sort.direction, |a, b| a.cmp(b));
         }
-    };
-    match sort.direction {
-        SortDirection::Asc => order.sort_by(|&a, &b| compare(&rows[a], &rows[b])),
-        SortDirection::Desc => order.sort_by(|&a, &b| compare(&rows[b], &rows[a])),
     }
     order
+}
+
+/// `None` keys are NULLs: last ascending, first descending.
+fn sort_by_keys<K>(
+    order: &mut [usize],
+    keys: &[Option<K>],
+    direction: SortDirection,
+    compare: impl Fn(&K, &K) -> CmpOrdering,
+) {
+    let ascending = |a: &usize, b: &usize| match (&keys[*a], &keys[*b]) {
+        (None, None) => CmpOrdering::Equal,
+        (None, Some(_)) => CmpOrdering::Greater,
+        (Some(_), None) => CmpOrdering::Less,
+        (Some(a), Some(b)) => compare(a, b),
+    };
+    match direction {
+        SortDirection::Asc => order.sort_by(ascending),
+        SortDirection::Desc => order.sort_by(|a, b| ascending(b, a)),
+    }
 }
 
 /// The display row that shows the same record once the order changes.
@@ -164,7 +182,7 @@ fn foreign_key_columns(
         .filter_map(|(position, source)| {
             let source = source.as_ref()?;
             let fk = foreign_keys
-                .get(&format!("{}.{}", source.schema, source.relation))?
+                .get(&table_key(&source.schema, &source.relation))?
                 .iter()
                 .find(|fk| fk.column_name == source.column)?;
             Some((position, fk.clone()))
@@ -247,10 +265,12 @@ pub fn QueryPage(session: QuerySession) -> impl IntoView {
     let db = use_context::<DbStore>().expect("DbStore not provided");
     let active_cell = RwSignal::new(None::<CellPosition>);
     let sort = RwSignal::new(None::<ColumnSort>);
-    // A new execution starts in the order its SQL produced.
+    // A new execution starts in the order its SQL produced. Results are cleared
+    // when a run starts, so this resets while nothing is rendered; the guard
+    // keeps the arriving result from rendering twice.
     Effect::new(move |previous: Option<()>| {
         result.track();
-        if previous.is_some() {
+        if previous.is_some() && sort.get_untracked().is_some() {
             sort.set(None);
         }
     });
